@@ -1,0 +1,280 @@
+{
+"updated": "2026-10-06",
+"basis": "Gemaakt door Claude op basis van je decklijst, Scryfall en Cardmarket-prijzen. Nieuwe kaarten zijn alleen op kaarttekst beoordeeld, niet op speeldata. Let op: prijzen en Kopen?-signalen van kaarten uit de allernieuwste sets zijn de eerste weken onbetrouwbaar (€0,02 betekent meestal: nog geen verkopen).",
+"decks": {
+"5760401": {
+"lists": [
+{
+"name": "Binnen bracket 3",
+"note": "Geen Game Changers erbij, en gecontroleerd dat het deck er geen nieuwe combo's door krijgt. Craterhoof Behemoth staat niet op de Game Changers-lijst.",
+"cards": [
+{
+"n": "Ghalta the Unstoppable",
+"why": "8/8 trample voor weinig mana bij grote beesten; geeft je hele team trample",
+"id": 907308
+},
+{
+"n": "Savage Land Dinosaur",
+"why": "7/6 trample die ook als landcycler (ramp) werkt",
+"id": 891582
+},
+{
+"n": "Devil Dinosaur",
+"why": "Dino-lord: andere dino's +1/+1 en hexproof",
+"id": 892181
+},
+{
+"n": "Gert and Old Lace, Runaways",
+"why": "Goedkope dino-trampler die een land haalt (ramp)",
+"id": 892212
+},
+{
+"n": "World War Hulk",
+"why": "Volgende rode of groene creature gratis: valsspelen met een grote dino",
+"id": 886604
+},
+{
+"n": "Garruk, Curse Breaker",
+"why": "Kaartentrek bij elke creature met power 4+, ramp en een 4/4 trampler",
+"id": 905787
+},
+{
+"n": "Giant-Man, Gargantuan Genius",
+"why": "6/6 die mana maakt voor elke grote creature",
+"id": 892184
+},
+{
+"n": "Hungering Puppetbeast",
+"why": "5/5 trample met een mana-token erbij",
+"id": 908805
+},
+{
+"n": "Aerid Konstrari",
+"why": "4 mana 5/4 flier die mana-tokens maakt (value)",
+"id": 907310
+},
+{
+"n": "Rhino, Terrible Trampler",
+"why": "7/6 trample die je team counters en trample geeft: explosieve beurt",
+"id": 892190
+},
+{
+"n": "Gigantic Big Bear",
+"why": "10/7 hexproof haste voor 7: directe klap",
+"id": 900329
+},
+{
+"n": "Wildgrowth Archaic",
+"why": "Elke volgende creature komt met extra counters: groter en groter",
+"id": 882675
+},
+{
+"n": "Samut, Hazoret's Champion",
+"why": "Haste voor al je beesten: explosieve beurt",
+"id": 909971
+},
+{
+"n": "Konstrari Charm",
+"why": "Goedkoop: counters plus trample, of 3 mana, of schade aan een flier",
+"id": 908808
+},
+{
+"n": "Colossal Collision",
+"why": "Bite-removal die ook als landcycler werkt",
+"id": 892169
+},
+{
+"n": "Gishath, Sun's Avatar",
+"why": "Dino-bom in jouw drie kleuren: legt extra dino's neer bij schade"
+},
+{
+"n": "Etali, Primal Storm",
+"why": "Gratis spreuken van alle bibliotheken bij elke aanval"
+},
+{
+"n": "Ghalta and Mavren",
+"why": "12/12 trample die elke aanval extra dino-tokens maakt"
+},
+{
+"n": "Hulking Raptor",
+"why": "Staat op je maybeboard: dino die elke beurt GG geeft (ramp)"
+},
+{
+"n": "Annoyed Altisaur",
+"why": "Reach, trample én cascade: gratis spreuk erbij"
+},
+{
+"n": "Agonasaur Rex",
+"why": "5 mana 8/8 trample, en te cyclen met counters"
+},
+{
+"n": "Carnage Tyrant",
+"why": "7/6 trample hexproof, niet te counteren: moeilijk weg te halen"
+},
+{
+"n": "Kogla and Yidaro",
+"why": "Dino die bij komst vecht of trample en haste krijgt"
+},
+{
+"n": "The Skullspore Nexus",
+"why": "Elke gestorven creature wordt een dino-token: value en bescherming"
+},
+{
+"n": "Vaultborn Tyrant",
+"why": "Staat op je maybeboard: kaartentrek, leven en komt terug (duur)"
+},
+{
+"n": "Drover of the Mighty",
+"why": "1-drop mana dork die in een dino-deck +2/+2 krijgt"
+},
+{
+"n": "Intrepid Paleontologist",
+"why": "2-drop mana dork die dino's uit je exile kan casten"
+},
+{
+"n": "Thunderherd Migration",
+"why": "Land naar het veld voor 2 mana, goedkoper met een dino"
+},
+{
+"n": "Restless Ridgeline",
+"why": "Dual land die zelf een dino wordt"
+},
+{
+"n": "Craterhoof Behemoth",
+"why": "Explosieve finisher; staat niet op de Game Changers-lijst"
+},
+{
+"n": "End-Raze Forerunners",
+"why": "Haste, vigilance, trample en +2/+2 voor je andere beesten"
+},
+{
+"n": "Overrun",
+"why": "Goedkope teamboost: de klassieke explosieve beurt"
+}
+]
+},
+{
+"name": "Voor bracket 4",
+"note": "Dit zijn allemaal Game Changers. Samen met de drie die je al hebt wordt het deck bracket 4. Sommige kaarten zijn erg duur.",
+"cards": [
+{
+"n": "Seedborn Muse",
+"why": "Untapt alles in andermans beurt: veel meer mana en acties"
+},
+{
+"n": "Crop Rotation",
+"why": "Land-tutor voor een explosieve beurt"
+},
+{
+"n": "Biorhythm",
+"why": "Zet het leven van iedereen gelijk aan hun aantal creatures: spelers uitknikkeren"
+},
+{
+"n": "Jeska's Will",
+"why": "Mana en kaarten in één: explosieve start van je beurt"
+},
+{
+"n": "Gamble",
+"why": "Goedkope tutor met risico"
+},
+{
+"n": "Worldly Tutor",
+"why": "Haalt een creature voor 1 mana"
+},
+{
+"n": "Mana Vault",
+"why": "Snelle mana voor een eerdere grote dino"
+},
+{
+"n": "Chrome Mox",
+"why": "Snelle mana (duur)"
+},
+{
+"n": "Survival of the Fittest",
+"why": "Tutor-motor voor je 28 dino's (zeer duur)"
+},
+{
+"n": "Gaea's Cradle",
+"why": "Enorm veel mana met veel creatures (extreem duur)"
+},
+{
+"n": "The One Ring",
+"why": "Kaartentrek en bescherming (duur)"
+}
+]
+},
+{
+"name": "Nieuwe art en uitvoeringen",
+"note": "Nieuwe uitvoeringen van kaarten die je al hebt. Of de art mooi is, beoordeel je zelf: klik op het plaatje.",
+"cards": [
+{
+"n": "Curious Altisaur",
+"why": "Nieuwe uitvoering van een dino die je al speelt",
+"id": 910624
+},
+{
+"n": "Ripjaw Raptor",
+"why": "Nieuwe uitvoering van een dino die je al speelt",
+"id": 910671
+},
+{
+"n": "Thrashing Brontodon",
+"why": "Nieuwe uitvoering van een dino die je al speelt",
+"id": 910689
+},
+{
+"n": "Rishkar's Expertise",
+"why": "Nieuwe uitvoering, standaard frame",
+"id": 910673
+},
+{
+"n": "Garruk's Uprising",
+"why": "Nieuwe uitvoering",
+"id": 910643
+},
+{
+"n": "Swords to Plowshares",
+"why": "Borderless Secret Lair",
+"id": 899752
+},
+{
+"n": "Earthquake",
+"why": "Borderless Secret Lair",
+"id": 889184
+},
+{
+"n": "Path to Exile",
+"why": "Inverted borderless fullart",
+"id": 891723
+},
+{
+"n": "Cultivate",
+"why": "Inverted borderless Secret Lair",
+"id": 898297
+},
+{
+"n": "Rogue's Passage",
+"why": "Inverted borderless Secret Lair",
+"id": 884804
+},
+{
+"n": "Sol Ring",
+"why": "Goedkoopste nieuwe uitvoering (Reality Fracture Commander)",
+"id": 909814
+},
+{
+"n": "Arcane Signet",
+"why": "Goedkoopste nieuwe uitvoering",
+"id": 909813
+},
+{
+"n": "Command Tower",
+"why": "Goedkoopste nieuwe uitvoering",
+"id": 909815
+}
+]
+}
+]
+}
+}
+}
