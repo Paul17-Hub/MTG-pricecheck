@@ -42,7 +42,22 @@ header.top .btn.primary{background:var(--bg);color:var(--ink);border-color:var(-
 #banner{display:none;margin:12px 16px 0;padding:10px 14px;border-radius:var(--radius);background:var(--go-bg);color:var(--go);font-weight:600}
 #banner.show{display:block}
 #msg{display:none;margin:12px 16px 0;padding:10px 14px;border-radius:var(--radius);background:var(--panel);border:1px solid var(--line)}
-#msg.show{display:block}
+#msg.show{display:block;position:fixed;left:50%;transform:translateX(-50%);bottom:20px;z-index:80;width:min(560px,calc(100vw - 24px));margin:0;box-shadow:0 8px 28px rgba(0,0,0,.35)}
+@media (max-width:899px){#msg.show{bottom:calc(76px + env(safe-area-inset-bottom,0px))}}
+.selc{display:inline-flex;align-items:center;justify-content:center;padding:8px;margin:-8px 0 -8px -8px;cursor:pointer;flex:none}
+.selc input{width:19px;height:19px;accent-color:var(--accent);cursor:pointer;margin:0}
+.rowf{display:flex;align-items:center;gap:4px}
+.rowf .cn{flex:1;min-width:0}
+th .selc{margin:-8px 2px -8px -8px}
+table.ls tbody tr.sel,table.ls tbody tr.sel:hover{background:color-mix(in srgb,var(--accent) 16%,transparent)}
+.bulk{position:sticky;top:0;z-index:6;display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--ink);color:var(--bg);padding:8px 10px;border-radius:10px;margin:0 0 8px;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.bulk[hidden]{display:none}
+.bulk b{flex:1;min-width:110px}
+.bulk .btn{background:transparent;color:var(--bg);border-color:rgba(255,255,255,.4)}
+.bulk .btn.danger{background:#b4412c;border-color:#b4412c;color:#fff}
+.fld{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px}
+.fld input{display:block;width:100%;margin-top:4px;padding:9px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-size:16px}
+
 
 main{display:grid;gap:16px;padding:16px;grid-template-columns:minmax(300px,420px) 1fr;align-items:start}
 section.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px}
@@ -270,6 +285,12 @@ dialog[open]{max-height:94dvh;overflow:auto}
         </label>
       </div>
     </details>
+    <div class="bulk" id="bulk" hidden>
+      <b id="bulk-n">0 geselecteerd</b>
+      <button class="btn" id="bulk-edit">Aanpassen…</button>
+      <button class="btn danger" id="bulk-del">Verwijderen</button>
+      <button class="btn" id="bulk-clear">Wis selectie</button>
+    </div>
     <div id="wl"></div>
     <p class="foot">Alle uitvoeringen zijn Engels. <b>Prijs</b> = Cardmarket Price Trend. De prijslijst heeft geen conditie of taal, dus dit is de trend over alle condities en talen: een indicatie, geen NM/EX-prijs. <b>Koopadvies</b> = (prijs + verzending) min beurskorting. Grafiekje: 30-daggemiddelde → 7-daggemiddelde → nu. De bron-link opent Cardmarket met Engels en EX of beter als filter, voor zover Cardmarket dat overneemt. <button class="btn ghost mini" id="btn-clear" style="border:0;text-decoration:underline">Lijst leegmaken</button></p>
   </section>
@@ -290,6 +311,18 @@ dialog[open]{max-height:94dvh;overflow:auto}
 <dialog id="dlg-zoom">
   <img id="z-img" alt="">
   <div class="zbar"><span id="z-cap"></span><a id="z-link" target="_blank" rel="noopener noreferrer">Scryfall ↗</a><button class="btn mini" id="z-close">Sluiten</button></div>
+</dialog>
+
+<dialog id="dlg-bulk">
+  <div class="dlg-h"><h3 id="bulk-title">Aanpassen</h3><button class="btn ghost mini" id="bulk-close">Sluiten</button></div>
+  <div class="dlg-b">
+    <p class="hint" style="margin-top:0">Alleen wat je invult of aanvinkt wordt gewijzigd.</p>
+    <label class="fld">Deck<input id="bk-deck" list="deck-list" placeholder="Laat leeg om niet te wijzigen" autocomplete="off"></label>
+    <label class="chk"><input type="checkbox" id="bk-nodeck"> Deck weghalen</label>
+    <label class="fld">Aantal<input id="bk-qty" type="number" min="1" inputmode="numeric" placeholder="Laat leeg om niet te wijzigen"></label>
+    <label class="chk"><input type="checkbox" id="bk-unpin"> Gekozen uitvoering loskoppelen (dan telt weer de goedkoopste uitvoering)</label>
+    <div class="btnrow"><button class="btn primary" id="bk-go">Toepassen</button></div>
+  </div>
 </dialog>
 
 <dialog id="dlg-imp">
@@ -384,6 +417,8 @@ const store = {
 };
 let state = Object.assign({ items: [], thr: 10, ship: 0, disc: 5, deck: '', sort: 'name' }, store.load());
 const NONE = '__none';
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2) + Date.now());
+const sel = new Set(); let lastRows = [], anchor = null;
 const curDeck = () => (state.deck && state.deck !== NONE ? state.deck : undefined);
 const persist = () => store.save(state);
 
@@ -571,11 +606,12 @@ function renderDeckUI() {
 }
 function renderWantlist() {
   renderDeckUI();
+  { let ch = false; for (const i of state.items) if (!i.u) { i.u = uid(); ch = true; } if (ch) persist(); }
   $('lsort').value = state.sort || 'name';
   const el = $('wl');
   const all = state.items.map((it, idx) => ({ it, idx, e: evaluate(it) }));
   updateBanner(all.filter((r) => r.e?.sig === 'ja'));
-  if (!all.length) { el.innerHTML = '<div class="empty">Nog geen kaarten. Tik op “Lijst importeren” om een decklijst of CSV in te voegen, of zoek een kaart en tik op “+ Lijst”.</div>'; $('lsum').textContent = ''; return; }
+  if (!all.length) { el.innerHTML = '<div class="empty">Nog geen kaarten. Tik op “Lijst importeren” om een decklijst of CSV in te voegen, of zoek een kaart en tik op “+ Lijst”.</div>'; $('lsum').textContent = ''; sel.clear(); lastRows = []; syncSel(); return; }
   const q = norm($('lf').value || ''), dk = state.deck || '';
   const rows = all.filter((r) => (!dk || (dk === NONE ? !r.it.deck : r.it.deck === dk)) && (!q || norm(r.it.name).includes(q)));
   const byName_ = (a, b) => a.it.name.localeCompare(b.it.name);
@@ -588,24 +624,27 @@ function renderWantlist() {
     deck: (a, b) => (a.it.deck || '\uffff').localeCompare(b.it.deck || '\uffff') || byName_(a, b)
   }[state.sort || 'name'] || byName_;
   rows.sort(cmp);
+  { const vis = new Set(rows.map((r) => r.it.u)); for (const u of [...sel]) if (!vis.has(u)) sel.delete(u); }
   const ja = rows.filter((r) => r.e?.sig === 'ja').length, stuks = rows.reduce((n, r) => n + (r.it.qty || 1), 0);
   $('lsum').textContent = `${rows.length} ${rows.length === 1 ? 'kaart' : 'kaarten'}${stuks !== rows.length ? ` (${stuks} stuks)` : ''}${ja ? ` · ${ja}× JA` : ''}`;
-  if (!rows.length) { el.innerHTML = '<div class="empty">Geen kaarten die aan het filter voldoen.</div>'; return; }
-  el.innerHTML = `<table class="ls"><thead><tr><th>Kaart</th><th class="r">Prijs</th><th class="r">Koopadvies</th><th>Kopen?</th></tr></thead><tbody>` +
+  if (!rows.length) { el.innerHTML = '<div class="empty">Geen kaarten die aan het filter voldoen.</div>'; lastRows = []; syncSel(); return; }
+  el.innerHTML = `<table class="ls"><thead><tr><th><label class="selc" title="Alles selecteren"><input type="checkbox" id="sel-all" aria-label="Alles selecteren"></label>Kaart</th><th class="r">Prijs</th><th class="r">Koopadvies</th><th>Kopen?</th></tr></thead><tbody>` +
     rows.map(({ it, idx, e }) => {
-      if (!e) return `<tr data-row="${idx}"><td class="c-name" colspan="4">${esc(it.name)} <span class="hint">(niet gevonden in de database)</span> <button class="rm" data-rm="${idx}" aria-label="Verwijder ${esc(it.name)}">×</button></td></tr>`;
+      const chk = sel.has(it.u) ? 'checked' : '';
+      if (!e) return `<tr data-row="${idx}" data-u="${it.u}" class="${chk ? 'sel' : ''}"><td class="c-name" colspan="4"><div class="rowf"><label class="selc"><input type="checkbox" class="sel" data-u="${it.u}" ${chk} aria-label="Selecteer ${esc(it.name)}"></label><span>${esc(it.name)} <span class="hint">(niet gevonden in de database)</span></span> <button class="rm" data-rm="${it.u}" aria-label="Verwijder ${esc(it.name)}">×</button></div></td></tr>`;
       const dir = e.dEur == null ? '' : (e.dEur <= 0 ? 'down' : 'up');
       const chg = e.dEur == null ? '' : `<small class="${dir} num">${pct.format(e.dPct)}% · ${eurSigned.format(e.dEur)}</small>`;
-      return `<tr data-row="${idx}">
-        <td class="c-name"><div class="cn" data-hover="${e.c.id}">
+      return `<tr data-row="${idx}" data-u="${it.u}" class="${chk ? 'sel' : ''}">
+        <td class="c-name"><div class="rowf"><label class="selc"><input type="checkbox" class="sel" data-u="${it.u}" ${chk} aria-label="Selecteer ${esc(it.name)}"></label><div class="cn" data-hover="${e.c.id}">
           <button class="th" data-zoom="${e.c.id}" aria-label="Vergroot ${esc(it.name)}"><img loading="lazy" alt="" src="${smallImg(e.c)}"></button>
           <div class="nm"><b>${it.qty > 1 ? it.qty + '× ' : ''}${esc(it.name)}${it.deck ? `<span class="deck">${esc(it.deck)}</span>` : ''}</b><small>${esc(e.c.s)} #${esc(e.c.cn)}${it.id ? '' : ' · goedkoopste uitvoering'}</small></div>
-          <button class="rm" data-rm="${idx}" aria-label="Verwijder ${esc(it.name)}">×</button></div></td>
+          <button class="rm" data-rm="${it.u}" aria-label="Verwijder ${esc(it.name)}">×</button></div></div></td>
         <td class="c-price r pc"><div class="pcw">${spark(e.a30, e.a7, e.p)}<div><span class="big num">${e.p != null ? eur.format(e.p) : '–'}</span>${chg}<a href="${urlCM(e.c)}" target="_blank" rel="noopener noreferrer">bron ↗</a></div></div></td>
         <td class="c-koop r kc">${e.koop != null ? `<span class="big num">≤ ${eur.format(e.koop)}</span><small class="num">incl. ${eur.format(e.ship)} verzending</small>` : '–'}</td>
         <td class="c-sig" title="${esc(e.why)}"><span class="sig ${e.sig}">${e.sig === 'ja' ? 'JA' : e.sig === 'nee' ? 'NEE' : '?'}</span><small class="why">${esc(e.why)}</small></td>
       </tr>`;
     }).join('') + '</tbody></table>';
+  lastRows = rows.map((r) => r.it.u); syncSel();
 }
 function updateBanner(yes) {
   const b = $('banner');
@@ -724,13 +763,58 @@ $('d-add').addEventListener('click', () => {
 $('d-img').style.cursor = 'zoom-in';
 $('d-img').addEventListener('click', () => openZoom(+$('d-add').dataset.id));
 /* lijst: klikken, hover, vergroten */
+function syncSel() {
+  document.querySelectorAll('#wl tr[data-u]').forEach((tr) => { const on = sel.has(tr.dataset.u); tr.classList.toggle('sel', on); const c = tr.querySelector('input.sel'); if (c) c.checked = on; });
+  const all = $('sel-all'); if (all) { all.checked = lastRows.length > 0 && lastRows.every((u) => sel.has(u)); all.indeterminate = sel.size > 0 && !all.checked; }
+  $('bulk').hidden = sel.size === 0;
+  $('bulk-n').textContent = `${sel.size} ${sel.size === 1 ? 'kaart' : 'kaarten'} geselecteerd`;
+}
+function removeItems(uids) {
+  const removed = state.items.map((it, i) => ({ it, i })).filter((x) => uids.has(x.it.u));
+  if (!removed.length) return;
+  state.items = state.items.filter((it) => !uids.has(it.u)); sel.clear(); persist(); runSearch(); renderWantlist();
+  const m = $('msg'); m.innerHTML = `${removed.length} ${removed.length === 1 ? 'kaart' : 'kaarten'} verwijderd. <button class="btn mini" id="undo" style="margin-left:8px">Ongedaan maken</button>`;
+  m.classList.add('show'); clearTimeout(note.t); note.t = setTimeout(() => m.classList.remove('show'), 15000);
+  $('undo').onclick = () => { removed.sort((x, y) => x.i - y.i).forEach((x) => state.items.splice(Math.min(x.i, state.items.length), 0, x.it)); persist(); runSearch(); renderWantlist(); m.classList.remove('show'); };
+}
 $('wl').addEventListener('click', (e) => {
   if (e.target.closest('a')) return;
+  const box = e.target.closest('input.sel');
+  if (box) {
+    const u = box.dataset.u, ix = lastRows.indexOf(u);
+    if (e.shiftKey && anchor != null && lastRows.includes(anchor)) { const [x, y] = [lastRows.indexOf(anchor), ix].sort((m, n) => m - n); for (let k = x; k <= y; k++) box.checked ? sel.add(lastRows[k]) : sel.delete(lastRows[k]); }
+    else box.checked ? sel.add(u) : sel.delete(u);
+    anchor = u; syncSel(); return;
+  }
+  if (e.target.closest('#sel-all')) { const on = $('sel-all').checked; lastRows.forEach((u) => (on ? sel.add(u) : sel.delete(u))); syncSel(); return; }
+  if (e.target.closest('.selc')) return;
   const z = e.target.closest('[data-zoom]'); if (z) { openZoom(+z.dataset.zoom); return; }
-  const rm = e.target.closest('[data-rm]');
-  if (rm) { const i = +rm.dataset.rm, it = state.items[i]; if (it && confirm(`“${it.name}” van de lijst halen?`)) { state.items.splice(i, 1); persist(); runSearch(); renderWantlist(); } return; }
+  const rm = e.target.closest('[data-rm]'); if (rm) { removeItems(new Set([rm.dataset.rm])); return; }
   const tr = e.target.closest('tr[data-row]');
-  if (tr) { const i = +tr.dataset.row, it = state.items[i], g = it && byName.get(norm(it.name)); if (g) openPicker(g, null, i); }
+  if (tr) {
+    if (sel.size > 0) { const u = tr.dataset.u; sel.has(u) ? sel.delete(u) : sel.add(u); anchor = u; syncSel(); return; }
+    const i = +tr.dataset.row, it = state.items[i], g = it && byName.get(norm(it.name)); if (g) openPicker(g, null, i);
+  }
+});
+$('bulk-clear').addEventListener('click', () => { sel.clear(); syncSel(); });
+$('bulk-del').addEventListener('click', () => removeItems(new Set(sel)));
+$('bulk-edit').addEventListener('click', () => {
+  $('bulk-title').textContent = `${sel.size} ${sel.size === 1 ? 'kaart' : 'kaarten'} aanpassen`;
+  $('bk-deck').value = ''; $('bk-qty').value = ''; $('bk-nodeck').checked = false; $('bk-unpin').checked = false;
+  $('dlg-bulk').showModal(); $('bk-deck').focus();
+});
+$('bulk-close').addEventListener('click', () => $('dlg-bulk').close());
+$('bk-go').addEventListener('click', () => {
+  const deck = $('bk-deck').value.trim(), nodeck = $('bk-nodeck').checked, q = parseInt($('bk-qty').value, 10), unpin = $('bk-unpin').checked;
+  if (!deck && !nodeck && !(q > 0) && !unpin) { note('Vul iets in of vink iets aan om te wijzigen.', 3500); return; }
+  let n = 0;
+  for (const it of state.items) if (sel.has(it.u)) {
+    if (nodeck) delete it.deck; else if (deck) it.deck = deck;
+    if (q > 0) { if (q > 1) it.qty = q; else delete it.qty; }
+    if (unpin) delete it.id;
+    n++;
+  }
+  persist(); $('dlg-bulk').close(); renderWantlist(); note(`${n} ${n === 1 ? 'kaart' : 'kaarten'} aangepast.`, 3000);
 });
 $('btn-clear').addEventListener('click', () => { if (confirm('Hele lijst leegmaken?')) { state.items = []; state.deck = ''; persist(); runSearch(); renderWantlist(); } });
 let popT = null, popId = null; const canHover = matchMedia('(hover:hover) and (pointer:fine)');
