@@ -1,0 +1,24 @@
+name: Decks ophalen uit Archidekt
+on:
+  workflow_dispatch: {}
+permissions: { contents: write, actions: write }
+jobs:
+  decks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Decks ophalen
+        run: node -e "import('./scripts/decks.mjs').then(m => m.syncDecks())"
+      - name: Opslaan in de repository
+        run: |
+          git config user.name "decks-bot"
+          git config user.email "decks-bot@users.noreply.github.com"
+          git add decks-data.json
+          if git diff --cached --quiet; then echo "Geen wijzigingen in de decks."; else git commit -m "Decks bijgewerkt uit Archidekt" && git push; fi
+      - name: Site opnieuw publiceren
+        run: gh workflow run sync.yml
+        env:
+          GH_TOKEN: ${{ github.token }}
