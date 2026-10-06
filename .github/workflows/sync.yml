@@ -17,6 +17,7 @@ jobs:
       - run: |
           mkdir site && cp index.html sw.js manifest.webmanifest icon-*.png site/ && cp -r data site/
           cp decks-data.json site/data/decks.json 2>/dev/null || echo 'Nog geen decks opgeslagen'
+          cp recs-data.json site/data/recs.json 2>/dev/null || echo 'Nog geen aanbevelingen'
       - uses: actions/upload-pages-artifact@v3
         with: { path: site }
   deploy:
