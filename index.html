@@ -82,6 +82,15 @@ details.fpanel>summary span{color:var(--accent);font-weight:700}
 .lmrow input{flex:1;min-width:0;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-size:16px}
 .lmrow small{color:var(--muted);min-width:22px;text-align:right}
 a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center}
+details.dblock>summary{cursor:pointer;list-style:none;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+details.dblock>summary::-webkit-details-marker{display:none}
+details.dblock>summary::before{content:"▸";color:var(--muted);width:12px}
+details.dblock[open]>summary::before{content:"▾"}
+details.dblock>summary b{font-size:14px}
+details.dblock>summary .vs{font-weight:700;margin-right:4px}
+details.dblock[open]>summary{margin-bottom:10px}
+.rwhy{display:block;color:var(--muted);font-size:12px;font-weight:400}
+.rnote{font-size:13px;color:var(--muted);margin:0 0 8px}
 .dblock{border:1px solid var(--line);border-radius:10px;background:var(--bg);padding:12px;margin:0 0 12px}
 .dblock h3{margin:0 0 8px;font-size:14px}
 .dhead{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
@@ -91,7 +100,7 @@ a.btn{text-decoration:none;color:inherit;display:inline-flex;align-items:center}
 .pill{display:inline-block;font-size:12px;padding:2px 9px;border-radius:999px;background:var(--line);margin:0 5px 5px 0}
 .pill.warn{background:color-mix(in srgb,var(--up) 18%,transparent);color:var(--up);font-weight:600}
 .pill.ok{background:var(--go-bg);color:var(--go);font-weight:600}
-.dgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:0 0 12px}
+.dgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:0 0 12px;align-items:start}
 .dgrid .dblock{margin:0}
 .verd{font-size:16px;font-weight:700;margin:2px 0 4px}
 .combo{padding:6px 0;border-top:1px dashed var(--line);font-size:14px}
@@ -840,6 +849,7 @@ async function sync(auto) {
     await DB.set('cards', payload);
     indexCards(payload);
     try { const rd = await fetch('data/decks.json', { cache: 'no-store' }); if (rd.ok) { const dp = await rd.json(); await DB.set('decks', dp); indexDecks(dp); } } catch {}
+    try { const rr = await fetch('data/recs.json', { cache: 'no-store' }); if (rr.ok) { const rp = await rr.json(); await DB.set('recs', rp); indexRecs(rp); } } catch {}
     setStatus(); runSearch(); renderWantlist(); renderDecks();
     note(auto ? 'Prijzen automatisch bijgewerkt.' : 'Prijzen bijgewerkt.', 3500);
   } catch (e) {
@@ -1095,7 +1105,10 @@ $('f-clear').addEventListener('click', () => { flt.pmin = flt.pmax = null; flt.t
 
 /* ---------- decks (uit Archidekt, via de dagelijkse update) ---------- */
 let deckData = { decks: [], synced: null };
-const deckUI = { q: '', cat: '', board: 'main' };
+const deckUI = { q: '', cat: '', board: 'main', rl: 0 };
+const deckF = { types: new Set(), colors: new Set(), mvs: new Set(), rar: new Set(), pmin: null, pmax: null };
+let recsData = { decks: {} };
+function indexRecs(p) { recsData = p && p.decks ? p : { decks: {} }; }
 const GENERIC_CATS = new Set(['Land', 'Creature', 'Artifact', 'Enchantment', 'Instant', 'Sorcery', 'Planeswalker', 'Card', 'Battle']);
 function indexDecks(p) { deckData = p && Array.isArray(p.decks) ? p : { decks: [], synced: null }; }
 const curDeckObj = () => deckData.decks.find((d) => String(d.id) === String(state.deckSel)) || deckData.decks[0] || null;
@@ -1124,9 +1137,46 @@ function deckRefreshHint() {
   const link = m && repo ? ` <a href="https://github.com/${m[1]}/${repo}/actions/workflows/decks.yml" target="_blank" rel="noopener noreferrer">Vernieuw de decks via GitHub ↗</a> (Run workflow; het duurt daarna een paar minuten).` : ' Vernieuwen gaat via GitHub: Actions → Decks ophalen uit Archidekt → Run workflow.';
   return 'Iets aangepast in Archidekt?' + link;
 }
+function recsHtml(d) {
+  const rd = recsData.decks[d.id];
+  if (!rd || !rd.lists || !rd.lists.length) return '<div class="dblock" id="recs-block"><h3>Aanbevelingen</h3><div class="hint" style="margin:0">Voor dit deck zijn er nog geen aanbevelingen. Vul bij <b>Plan van het deck</b> je plan in en klik op <b>Kopieer voor Claude</b>. Plak het in het gesprek, dan maak ik een shortlist die hier komt te staan.</div></div>';
+  const li = Math.min(deckUI.rl || 0, rd.lists.length - 1), L = rd.lists[li];
+  const inDeck = new Set(d.cards.filter((c) => !c.bd).map((c) => norm(c.n))), onMaybe = new Set(d.cards.filter((c) => c.bd).map((c) => norm(c.n)));
+  const rows = L.cards.map((c, i) => {
+    const e = evaluate({ name: c.n, ...(c.id ? { id: c.id } : {}) }), db = e?.c;
+    const tag = inDeck.has(norm(c.n)) ? ' <span class="pill">al in je deck</span>' : onMaybe.has(norm(c.n)) ? ' <span class="pill">staat op je maybeboard</span>' : '';
+    return `<tr data-name="${esc(c.n)}"><td><div class="nmq" ${db ? `data-hover="${db.id}"` : ''}>${db ? `<button class="th" data-zoom="${db.id}" aria-label="Vergroot ${esc(c.n)}"><img loading="lazy" alt="" src="${smallImg(db)}"></button>` : ''}<span><b>${esc(c.n)}</b>${tag}<span class="rwhy">${esc(c.why || '')}${db ? ` · ${esc(db.s)} #${esc(db.cn)}` : ''}</span></span></div></td><td class="r num">${e?.p != null ? eur.format(e.p) : '–'}</td><td class="r num hm">${e?.koop != null ? '≤ ' + eur.format(e.koop) : '–'}</td><td class="hm"><span class="sig ${e?.sig || 'geen'}">${e?.sig === 'ja' ? 'JA' : e?.sig === 'nee' ? 'NEE' : '?'}</span></td><td><button class="btn mini" data-radd="${i}">+ Lijst</button></td></tr>`;
+  }).join('');
+  return `<div class="dblock" id="recs-block">
+      <h3>Aanbevelingen</h3>
+      <div class="chips" style="margin-bottom:6px">${rd.lists.map((l, i) => `<button class="chip ${i === li ? 'on' : ''}" data-rl="${i}">${esc(l.name)}<span class="n">${l.cards.length}</span></button>`).join('')}</div>
+      <div class="rnote">${esc(L.note || '')}</div>
+      <table class="dtbl"><thead><tr><th>Kaart en reden</th><th class="r">Prijs</th><th class="r hm">Koopadvies</th><th class="hm">Kopen?</th><th></th></tr></thead><tbody>${rows}</tbody></table>
+      <div style="margin-top:8px"><button class="btn mini" data-rall="1">Alles op een lijst zetten</button></div>
+      <div class="hint">${esc(rd.basis || '')}${rd.updated ? ' Bijgewerkt op ' + esc(rd.updated) + '.' : ''}</div>
+    </div>`;
+}
+const anyDeckFilter = () => deckF.types.size || deckF.colors.size || deckF.mvs.size || deckF.rar.size || deckF.pmin != null || deckF.pmax != null;
+const countDeckFilters = () => (deckF.types.size ? 1 : 0) + (deckF.colors.size ? 1 : 0) + (deckF.mvs.size ? 1 : 0) + (deckF.rar.size ? 1 : 0) + (deckF.pmin != null || deckF.pmax != null ? 1 : 0);
+function renderDeckFilterUI() {
+  const set = (id, html) => { const el = $(id); if (el) el.innerHTML = html; };
+  set('dk-ftypes', chipsHtml(TYPES, deckF.types, 'dtypes')); set('dk-fcolors', chipsHtml(COLORS, deckF.colors, 'dcolors'));
+  set('dk-fmv', chipsHtml([0, 1, 2, 3, 4, 5, 6, 7].map((n) => [n, n === 7 ? '7+' : String(n)]), deckF.mvs, 'dmvs')); set('dk-frar', chipsHtml(RARS, deckF.rar, 'drar'));
+  const n = countDeckFilters(), el = $('dk-fcount'); if (el) el.textContent = n ? `(${n} actief)` : '';
+}
+function passDeckFilters(c, db, p) {
+  if (deckF.types.size && ![...deckF.types].some((t) => (c.ty || '').includes(t))) return false;
+  if (deckF.colors.size) { const ci = c.ci || ''; if (![...deckF.colors].some((x) => (x === 'C' ? ci === '' : x === 'M' ? ci.length > 1 : ci.includes(x)))) return false; }
+  if (deckF.mvs.size && !deckF.mvs.has(Math.min(c.mv, 7))) return false;
+  if (deckF.rar.size && !(db && deckF.rar.has(db.r))) return false;
+  if (deckF.pmin != null && !(p != null && p >= deckF.pmin)) return false;
+  if (deckF.pmax != null && !(p != null && p <= deckF.pmax)) return false;
+  return true;
+}
 const comboHtml = (x) => `<div class="combo">${x.cards.map(esc).join(' + ')}<small>${esc(x.makes.join(', '))} · samen ${x.mana} mana${x.cards.length > 2 ? ' · ' + x.cards.length + ' kaarten' : ''}</small></div>`;
 async function refreshDecks() {
-  try { const rd = await fetch('data/decks.json', { cache: 'no-store' }); if (!rd.ok) return; const dp = await rd.json(); await DB.set('decks', dp); indexDecks(dp); renderDecks(); } catch {}
+  try { const rr = await fetch('data/recs.json', { cache: 'no-store' }); if (rr.ok) { const rp = await rr.json(); await DB.set('recs', rp); indexRecs(rp); } } catch {}
+  try { const rd = await fetch('data/decks.json', { cache: 'no-store' }); if (!rd.ok) { renderDecks(); return; } const dp = await rd.json(); await DB.set('decks', dp); indexDecks(dp); renderDecks(); } catch {}
 }
 function renderDeckSelect() {
   const sel = $('deck-sel'), ds = deckData.decks;
@@ -1165,21 +1215,22 @@ function renderDecks() {
       </div>
     </div>
     <div class="dgrid">
-      <div class="dblock">
-        <h3>Bracket-controle</h3>
+      <details class="dblock" id="bracket-det" ${state.bracketOpen ? 'open' : ''}>
+        <summary><b>Bracket-controle</b> <span class="vs">${esc(b.est[0])}</span><span class="pill ${b.gc.length > 3 ? 'warn' : b.gc.length === 0 ? 'ok' : ''}">Game Changers ${b.gc.length}/3</span>${d.combos ? `<span class="pill ${b.two.length ? '' : 'ok'}">Tweekaartscombo\'s ${b.two.length}</span>` : ''}</summary>
         <div class="verd">${esc(b.est[0])}</div>
         <div style="color:var(--muted);font-size:13px;margin-bottom:8px">${esc(b.est[1])}. Dit is een indicatie, geen officieel oordeel.</div>
         <span class="pill ${b.gc.length > 3 ? 'warn' : b.gc.length === 0 ? 'ok' : ''}">Game Changers ${b.gc.length}/3</span><span class="pill ${b.ml.length ? 'warn' : 'ok'}">Mass land denial ${b.ml.length}</span><span class="pill">Extra beurten ${b.et.length}</span><span class="pill">Tutors ${b.tu.length}</span><span class="pill ${b.two.length ? '' : 'ok'}">Tweekaartscombo's ${d.combos ? b.two.length : '?'}</span>
         ${gcNames ? `<div style="font-size:13px;margin:4px 0">Game Changers: ${esc(gcNames)}</div>` : ''}
         ${(d.combos || []).slice(0, 5).map(comboHtml).join('')}${(d.combos || []).length > 5 ? `<details><summary style="cursor:pointer;color:var(--accent);font-size:13px;padding:6px 0">Toon de overige ${d.combos.length - 5} combo's</summary>${d.combos.slice(5).map(comboHtml).join('')}</details>` : ''}
         ${d.combos ? '<div style="font-size:12px;color:var(--muted);margin-top:6px">Combo\'s via Commander Spellbook. In bracket 3 zijn tweekaartscombo\'s alleen laat in het spel de bedoeling (vanaf ongeveer beurt 6).</div>' : '<div style="font-size:12px;color:var(--muted)">Combo\'s zijn voor dit deck niet opgehaald.</div>'}
-      </div>
+      </details>
       <div class="dblock">
         <h3>Opbouw</h3>
         <div class="bars" aria-label="Mana curve">${curve.map((n, i) => `<div class="bar"><span>${n || ''}</span><i style="height:${Math.round((n / cmax) * 70)}px"></i><span>${i === 7 ? '7+' : i}</span></div>`).join('')}</div>
         <div>${cats.slice(0, 14).map(([k, n]) => `<span class="pill">${esc(k)} ${n}</span>`).join('') || '<span class="hint">Geen eigen categorieën in Archidekt.</span>'}</div>
       </div>
     </div>
+    ${recsHtml(d)}
     <div class="dblock">
       <h3>Plan van het deck</h3>
       <textarea class="plan" id="deck-plan" placeholder="Wat probeert dit deck te doen? Bijvoorbeeld: grote dino's, veel ramp, één explosieve beurt." aria-label="Plan van het deck">${esc(m.plan || '')}</textarea>
@@ -1187,7 +1238,7 @@ function renderDecks() {
       <div class="hint">Wordt op dit toestel bewaard. Klik op <b>Kopieer voor Claude</b> om dit samen met je kaartenlijst in het gesprek te plakken.</div>
     </div>
     <div class="dblock">
-      <h3>Aanbevelingen en lijsten bij dit deck</h3>
+      <h3>Eigen lijsten bij dit deck</h3>
       ${linked.map(listChip).join('') || '<div class="hint" style="margin:0 0 8px">Nog geen lijsten gekoppeld. Importeer een lijst met aanbevelingen en koppel hem hier.</div>'}
       <div><button class="btn mini" id="deck-link">Lijsten koppelen…</button></div>
     </div>
@@ -1198,13 +1249,24 @@ function renderDecks() {
         <select id="dk-cat" aria-label="Categorie"><option value="">Alle categorieën</option>${[...new Set(d.cards.flatMap((c) => c.c || []))].filter((k) => !GENERIC_CATS.has(k)).sort().map((k) => `<option value="${esc(k)}" ${deckUI.cat === k ? 'selected' : ''}>${esc(k)}</option>`).join('')}</select>
         <select id="dk-board" aria-label="Bord"><option value="main" ${deckUI.board === 'main' ? 'selected' : ''}>Hoofddeck</option><option value="S" ${deckUI.board === 'S' ? 'selected' : ''}>Sideboard</option><option value="M" ${deckUI.board === 'M' ? 'selected' : ''}>Maybeboard</option><option value="all" ${deckUI.board === 'all' ? 'selected' : ''}>Alles</option></select>
       </div>
+      <details class="fpanel" id="dk-fpanel" ${anyDeckFilter() ? 'open' : ''}>
+        <summary>Filters <span id="dk-fcount"></span></summary>
+        <div class="fgrid">
+          <div class="fgrp"><b>Type</b><div class="fchips" id="dk-ftypes"></div></div>
+          <div class="fgrp"><b>Kleur (kleuridentiteit)</b><div class="fchips" id="dk-fcolors"></div></div>
+          <div class="fgrp"><b>Mana value</b><div class="fchips" id="dk-fmv"></div></div>
+          <div class="fgrp"><b>Zeldzaamheid</b><div class="fchips" id="dk-frar"></div></div>
+          <div class="fgrp"><b>Prijs</b><div class="fprice"><input id="dk-pmin" type="number" min="0" step="0.5" inputmode="decimal" placeholder="van €" value="${deckF.pmin ?? ''}" aria-label="Prijs vanaf"> – <input id="dk-pmax" type="number" min="0" step="0.5" inputmode="decimal" placeholder="tot €" value="${deckF.pmax ?? ''}" aria-label="Prijs tot"></div></div>
+          <div><button class="btn" id="dk-fclear">Wis filters</button></div>
+        </div>
+      </details>
       <div id="deck-cards"></div>
     </div>`;
   $('deck-foot').innerHTML = `Decks opgehaald: ${deckData.synced ? ago(deckData.synced) : 'onbekend'}. ` + deckRefreshHint();
-  renderDeckCards(d);
+  renderDeckFilterUI(); renderDeckCards(d);
 }
 function renderDeckCards(d) {
-  const q = norm(deckUI.q), rows = d.cards.filter((c) => (deckUI.board === 'all' || (deckUI.board === 'main' ? !c.bd : c.bd === deckUI.board)) && (!deckUI.cat || (c.c || []).includes(deckUI.cat)) && (!q || norm(c.n).includes(q)));
+  const q = norm(deckUI.q), rows = d.cards.filter((c) => (deckUI.board === 'all' || (deckUI.board === 'main' ? !c.bd : c.bd === deckUI.board)) && (!deckUI.cat || (c.c || []).includes(deckUI.cat)) && (!q || norm(c.n).includes(q))).filter((c) => { if (!anyDeckFilter()) return true; const db = deckCardDb(c); return passDeckFilters(c, db, db ? price(db) : null); });
   rows.sort((x, y) => (y.cmd ? 1 : 0) - (x.cmd ? 1 : 0) || ((x.ty || '').includes('L') ? 1 : 0) - ((y.ty || '').includes('L') ? 1 : 0) || x.mv - y.mv || x.n.localeCompare(y.n));
   let tot = 0;
   const html = rows.map((c) => {
@@ -1242,13 +1304,29 @@ $('deck-body').addEventListener('input', (e) => {
   if (e.target.id === 'deck-plan') { m.plan = e.target.value; clearTimeout(planT); planT = setTimeout(persist, 400); }
   else if (e.target.id === 'deck-budget') { m.budget = e.target.value; clearTimeout(planT); planT = setTimeout(persist, 400); }
   else if (e.target.id === 'dk-q') { deckUI.q = e.target.value; renderDeckCards(d); }
+  else if (e.target.id === 'dk-pmin') { deckF.pmin = num(e.target.value); renderDeckFilterUI(); renderDeckCards(d); }
+  else if (e.target.id === 'dk-pmax') { deckF.pmax = num(e.target.value); renderDeckFilterUI(); renderDeckCards(d); }
 });
 $('deck-body').addEventListener('change', (e) => {
   const d = curDeckObj(); if (!d) return;
   if (e.target.id === 'dk-cat') { deckUI.cat = e.target.value; renderDeckCards(d); }
   else if (e.target.id === 'dk-board') { deckUI.board = e.target.value; renderDeckCards(d); }
 });
+$('deck-body').addEventListener('toggle', (e) => { if (e.target.id === 'bracket-det') { state.bracketOpen = e.target.open; persist(); } }, true);
 $('deck-body').addEventListener('click', (e) => {
+  const dfc = e.target.closest('.fc[data-k^="d"]');
+  if (dfc) { const S = { dtypes: deckF.types, dcolors: deckF.colors, dmvs: deckF.mvs, drar: deckF.rar }[dfc.dataset.k], v = dfc.dataset.k === 'dmvs' ? +dfc.dataset.v : dfc.dataset.v; S.has(v) ? S.delete(v) : S.add(v); renderDeckFilterUI(); const dd = curDeckObj(); if (dd) renderDeckCards(dd); return; }
+  if (e.target.closest('#dk-fclear')) { deckF.types.clear(); deckF.colors.clear(); deckF.mvs.clear(); deckF.rar.clear(); deckF.pmin = deckF.pmax = null; if ($('dk-pmin')) $('dk-pmin').value = ''; if ($('dk-pmax')) $('dk-pmax').value = ''; renderDeckFilterUI(); const dd = curDeckObj(); if (dd) renderDeckCards(dd); return; }
+  const rl = e.target.closest('[data-rl]'); if (rl) { deckUI.rl = +rl.dataset.rl; renderDecks(); return; }
+  const ra = e.target.closest('[data-radd]');
+  if (ra) { const dd = curDeckObj(), L = recsData.decks[dd?.id]?.lists?.[Math.min(deckUI.rl || 0, 99)], c = L?.cards[+ra.dataset.radd]; if (c) openAddLists({ mode: 'card', name: c.n, id: c.id || null }); return; }
+  if (e.target.closest('[data-rall]')) {
+    const dd = curDeckObj(), L = recsData.decks[dd?.id]?.lists?.[deckUI.rl || 0]; if (!dd || !L) return;
+    const nm = `${dd.name}: ${L.name}`; if (!(state.lists || []).includes(nm)) state.lists = [...(state.lists || []), nm];
+    let n = 0; for (const c of L.cards) { if (state.items.some((i) => norm(i.name) === norm(c.n) && (i.id || null) === (c.id || null) && i.deck === nm)) continue; state.items.push({ name: c.n, ...(c.id ? { id: c.id } : {}), deck: nm, u: uid() }); n++; }
+    const m2 = dmeta(dd); if (!(m2.lists || []).includes(nm)) m2.lists = [...(m2.lists || []), nm];
+    persist(); runSearch(); renderWantlist(); renderDecks(); note(`${n} kaarten op de lijst “${nm}” gezet. Je ziet de prijzen en JA-signalen in Alle kaarten.`, 4500); return;
+  }
   const z = e.target.closest('[data-zoom]'); if (z) { openZoom(+z.dataset.zoom); return; }
   const gl = e.target.closest('[data-golist]'); if (gl) { state.deck = gl.dataset.golist; persist(); setTab('wantlist'); renderWantlist(); window.scrollTo(0, 0); return; }
   if (e.target.closest('#deck-link')) { openDeckLists(); return; }
@@ -1456,7 +1534,7 @@ $('tab-search').addEventListener('click', () => { setTab('search'); $('q').focus
   $('set-thr').value = state.thr; $('set-ship').value = state.ship; $('set-disc').value = state.disc ?? 5;
   if (matchMedia('(min-width:900px)').matches) document.body.dataset.tab = 'wantlist';
   renderWantlist(); renderResults([]);
-  try { const saved = await DB.get('cards'); if (saved) { indexCards(saved); const sdk = await DB.get('decks'); if (sdk) indexDecks(sdk); setStatus(); runSearch(); renderWantlist(); } } catch {}
+  try { const saved = await DB.get('cards'); if (saved) { indexCards(saved); const sdk = await DB.get('decks'); if (sdk) indexDecks(sdk); const srk = await DB.get('recs'); if (srk) indexRecs(srk); setStatus(); runSearch(); renderWantlist(); } } catch {}
   renderDecks(); if (navigator.onLine) refreshDecks();
   // één keer per dag automatisch bijwerken bij openen
   const age = meta.synced ? Date.now() - new Date(meta.synced).getTime() : Infinity;
