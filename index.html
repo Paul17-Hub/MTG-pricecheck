@@ -89,6 +89,10 @@ details.dblock[open]>summary::before{content:"▾"}
 details.dblock>summary b{font-size:14px}
 details.dblock>summary .vs{font-weight:700;margin-right:4px}
 details.dblock[open]>summary{margin-bottom:10px}
+.mvs{margin-left:auto;display:inline-flex;gap:4px}
+.mvb{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:6px;width:30px;height:28px;font-size:11px;padding:0;cursor:pointer}
+.blkbar{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px}
+.dbody{padding-top:2px}
 .rwhy{display:block;color:var(--muted);font-size:12px;font-weight:400}
 .rnote{font-size:13px;color:var(--muted);margin:0 0 8px}
 .dblock{border:1px solid var(--line);border-radius:10px;background:var(--bg);padding:12px;margin:0 0 12px}
@@ -249,6 +253,8 @@ table.ls .r{text-align:right}
   .dgrid{grid-template-columns:1fr}
   .dtbl .hm{display:none}
   .dhead>img{width:84px}
+  .dhead{flex-wrap:nowrap}
+  .dhead .t{min-width:0}
   .settings{gap:10px}
   .settings input{width:84px}
 }
@@ -550,7 +556,7 @@ const store = {
   load() { try { return JSON.parse(localStorage.getItem('wl') || '{}'); } catch { return {}; } },
   save(s) { try { localStorage.setItem('wl', JSON.stringify(s)); } catch {} }
 };
-let state = Object.assign({ items: [], lists: [], deckMeta: {}, deckSel: '', thr: 10, ship: 0, disc: 5, deck: '', sort: 'name' }, store.load());
+let state = Object.assign({ items: [], lists: [], deckMeta: {}, deckSel: '', deckBlocks: { order: [], open: {} }, thr: 10, ship: 0, disc: 5, deck: '', sort: 'name' }, store.load());
 const NONE = '__none';
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2) + Date.now());
 const sel = new Set(); let lastRows = [], anchor = null;
@@ -1137,9 +1143,16 @@ function deckRefreshHint() {
   const link = m && repo ? ` <a href="https://github.com/${m[1]}/${repo}/actions/workflows/decks.yml" target="_blank" rel="noopener noreferrer">Vernieuw de decks via GitHub ↗</a> (Run workflow; het duurt daarna een paar minuten).` : ' Vernieuwen gaat via GitHub: Actions → Decks ophalen uit Archidekt → Run workflow.';
   return 'Iets aangepast in Archidekt?' + link;
 }
+const BLK_DEFAULT = ['bracket', 'opbouw', 'recs', 'plan', 'lijsten', 'kaarten'];
+function blkState() {
+  const b = (state.deckBlocks = state.deckBlocks || { order: [], open: {} });
+  b.order = [...(b.order || []).filter((i) => BLK_DEFAULT.includes(i)), ...BLK_DEFAULT.filter((i) => !(b.order || []).includes(i))]; b.open = b.open || {};
+  return b;
+}
+function recsSum(d) { const rd = recsData.decks[d.id]; return rd && rd.lists && rd.lists.length ? `<span class="pill">${rd.lists.reduce((n, l) => n + l.cards.length, 0)} kaarten</span>` : ''; }
 function recsHtml(d) {
   const rd = recsData.decks[d.id];
-  if (!rd || !rd.lists || !rd.lists.length) return '<div class="dblock" id="recs-block"><h3>Aanbevelingen</h3><div class="hint" style="margin:0">Voor dit deck zijn er nog geen aanbevelingen. Vul bij <b>Plan van het deck</b> je plan in en klik op <b>Kopieer voor Claude</b>. Plak het in het gesprek, dan maak ik een shortlist die hier komt te staan.</div></div>';
+  if (!rd || !rd.lists || !rd.lists.length) return '<div id="recs-block"><div class="hint" style="margin:0">Voor dit deck zijn er nog geen aanbevelingen. Vul bij <b>Plan van het deck</b> je plan in en klik op <b>Kopieer voor Claude</b>. Plak het in het gesprek, dan maak ik een shortlist die hier komt te staan.</div></div>';
   const li = Math.min(deckUI.rl || 0, rd.lists.length - 1), L = rd.lists[li];
   const inDeck = new Set(d.cards.filter((c) => !c.bd).map((c) => norm(c.n))), onMaybe = new Set(d.cards.filter((c) => c.bd).map((c) => norm(c.n)));
   const rows = L.cards.map((c, i) => {
@@ -1147,8 +1160,7 @@ function recsHtml(d) {
     const tag = inDeck.has(norm(c.n)) ? ' <span class="pill">al in je deck</span>' : onMaybe.has(norm(c.n)) ? ' <span class="pill">staat op je maybeboard</span>' : '';
     return `<tr data-name="${esc(c.n)}"><td><div class="nmq" ${db ? `data-hover="${db.id}"` : ''}>${db ? `<button class="th" data-zoom="${db.id}" aria-label="Vergroot ${esc(c.n)}"><img loading="lazy" alt="" src="${smallImg(db)}"></button>` : ''}<span><b>${esc(c.n)}</b>${tag}<span class="rwhy">${esc(c.why || '')}${db ? ` · ${esc(db.s)} #${esc(db.cn)}` : ''}</span></span></div></td><td class="r num">${e?.p != null ? eur.format(e.p) : '–'}</td><td class="r num hm">${e?.koop != null ? '≤ ' + eur.format(e.koop) : '–'}</td><td class="hm"><span class="sig ${e?.sig || 'geen'}">${e?.sig === 'ja' ? 'JA' : e?.sig === 'nee' ? 'NEE' : '?'}</span></td><td><button class="btn mini" data-radd="${i}">+ Lijst</button></td></tr>`;
   }).join('');
-  return `<div class="dblock" id="recs-block">
-      <h3>Aanbevelingen</h3>
+  return `<div id="recs-block">
       <div class="chips" style="margin-bottom:6px">${rd.lists.map((l, i) => `<button class="chip ${i === li ? 'on' : ''}" data-rl="${i}">${esc(l.name)}<span class="n">${l.cards.length}</span></button>`).join('')}</div>
       <div class="rnote">${esc(L.note || '')}</div>
       <table class="dtbl"><thead><tr><th>Kaart en reden</th><th class="r">Prijs</th><th class="r hm">Koopadvies</th><th class="hm">Kopen?</th><th></th></tr></thead><tbody>${rows}</tbody></table>
@@ -1204,47 +1216,38 @@ function renderDecks() {
   const lists = allLists(), linked = (m.lists || []).filter((l) => lists.includes(l));
   const listChip = (l) => { const its = state.items.filter((i) => i.deck === l); const ja = its.filter((i) => evaluate(i)?.sig === 'ja').length; return `<button class="lchip" data-golist="${esc(l)}" title="Open deze lijst in Alle kaarten">${esc(l)} <small class="num">${its.length}</small>${ja ? ` <b>${ja}× JA</b>` : ''}</button>`; };
   const gcNames = b.gc.map((c) => c.n).join(', ');
-  body.innerHTML = `
-    <div class="dblock dhead">
-      ${cdb ? `<img alt="${esc(cdb.n)}" src="${bigImg(cdb)}" data-zoom="${cdb.id}">` : ''}
-      <div class="t">
-        <h3>${esc(d.name)}</h3>
-        <span class="pill">${esc(d.fmt)}</span>${cmds.length ? `<span class="pill">Commander: ${esc(cmds.map((c) => c.n).join(' + '))}</span>` : ''}${ci ? `<span class="pill">${esc(ci)}</span>` : ''}${d.bracket ? `<span class="pill">Archidekt-bracket ${d.bracket}</span>` : ''}
-        <div class="kv num" style="font-size:14px;color:var(--muted)">${qsum(main)} kaarten · ${lands} lands · waarde ${eur.format(total)}${miss ? ` (${miss} kaarten zonder prijs)` : ''}${side.length || maybe.length ? ` · sideboard ${qsum(side)}, maybeboard ${qsum(maybe)}` : ''}</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:4px">Laatst bijgewerkt op Archidekt: ${esc(String(d.updated || '').slice(0, 10))}${d.owner ? ' · ' + esc(d.owner) : ''}</div>
-      </div>
+  const bs = blkState();
+  const headHtml = `<div class="dblock dhead">
+    ${cdb ? `<img alt="${esc(cdb.n)}" src="${bigImg(cdb)}" data-zoom="${cdb.id}">` : ''}
+    <div class="t">
+      <h3>${esc(d.name)}</h3>
+      <span class="pill">${esc(d.fmt)}</span>${cmds.length ? `<span class="pill">Commander: ${esc(cmds.map((c) => c.n).join(' + '))}</span>` : ''}${ci ? `<span class="pill">${esc(ci)}</span>` : ''}${d.bracket ? `<span class="pill">Archidekt-bracket ${d.bracket}</span>` : ''}
+      <div class="kv num" style="font-size:14px;color:var(--muted)">${qsum(main)} kaarten · ${lands} lands · waarde ${eur.format(total)}${miss ? ` (${miss} kaarten zonder prijs)` : ''}${side.length || maybe.length ? ` · sideboard ${qsum(side)}, maybeboard ${qsum(maybe)}` : ''}</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">Laatst bijgewerkt op Archidekt: ${esc(String(d.updated || '').slice(0, 10))}${d.owner ? ' · ' + esc(d.owner) : ''}</div>
     </div>
-    <div class="dgrid">
-      <details class="dblock" id="bracket-det" ${state.bracketOpen ? 'open' : ''}>
-        <summary><b>Bracket-controle</b> <span class="vs">${esc(b.est[0])}</span><span class="pill ${b.gc.length > 3 ? 'warn' : b.gc.length === 0 ? 'ok' : ''}">Game Changers ${b.gc.length}/3</span>${d.combos ? `<span class="pill ${b.two.length ? '' : 'ok'}">Tweekaartscombo\'s ${b.two.length}</span>` : ''}</summary>
+  </div>
+`;
+  const defs = {
+    bracket: { t: 'Bracket-controle', open: false, sum: `<span class="vs">${esc(b.est[0])}</span><span class="pill ${b.gc.length > 3 ? 'warn' : b.gc.length === 0 ? 'ok' : ''}">Game Changers ${b.gc.length}/3</span>${d.combos ? `<span class="pill ${b.two.length ? '' : 'ok'}">Tweekaartscombo\'s ${b.two.length}</span>` : ''}`, html: `
         <div class="verd">${esc(b.est[0])}</div>
         <div style="color:var(--muted);font-size:13px;margin-bottom:8px">${esc(b.est[1])}. Dit is een indicatie, geen officieel oordeel.</div>
         <span class="pill ${b.gc.length > 3 ? 'warn' : b.gc.length === 0 ? 'ok' : ''}">Game Changers ${b.gc.length}/3</span><span class="pill ${b.ml.length ? 'warn' : 'ok'}">Mass land denial ${b.ml.length}</span><span class="pill">Extra beurten ${b.et.length}</span><span class="pill">Tutors ${b.tu.length}</span><span class="pill ${b.two.length ? '' : 'ok'}">Tweekaartscombo's ${d.combos ? b.two.length : '?'}</span>
         ${gcNames ? `<div style="font-size:13px;margin:4px 0">Game Changers: ${esc(gcNames)}</div>` : ''}
         ${(d.combos || []).slice(0, 5).map(comboHtml).join('')}${(d.combos || []).length > 5 ? `<details><summary style="cursor:pointer;color:var(--accent);font-size:13px;padding:6px 0">Toon de overige ${d.combos.length - 5} combo's</summary>${d.combos.slice(5).map(comboHtml).join('')}</details>` : ''}
         ${d.combos ? '<div style="font-size:12px;color:var(--muted);margin-top:6px">Combo\'s via Commander Spellbook. In bracket 3 zijn tweekaartscombo\'s alleen laat in het spel de bedoeling (vanaf ongeveer beurt 6).</div>' : '<div style="font-size:12px;color:var(--muted)">Combo\'s zijn voor dit deck niet opgehaald.</div>'}
-      </details>
-      <div class="dblock">
-        <h3>Opbouw</h3>
-        <div class="bars" aria-label="Mana curve">${curve.map((n, i) => `<div class="bar"><span>${n || ''}</span><i style="height:${Math.round((n / cmax) * 70)}px"></i><span>${i === 7 ? '7+' : i}</span></div>`).join('')}</div>
+      ` },
+    opbouw: { t: 'Opbouw', open: true, sum: '', html: `        <div class="bars" aria-label="Mana curve">${curve.map((n, i) => `<div class="bar"><span>${n || ''}</span><i style="height:${Math.round((n / cmax) * 70)}px"></i><span>${i === 7 ? '7+' : i}</span></div>`).join('')}</div>
         <div>${cats.slice(0, 14).map(([k, n]) => `<span class="pill">${esc(k)} ${n}</span>`).join('') || '<span class="hint">Geen eigen categorieën in Archidekt.</span>'}</div>
-      </div>
-    </div>
-    ${recsHtml(d)}
-    <div class="dblock">
-      <h3>Plan van het deck</h3>
-      <textarea class="plan" id="deck-plan" placeholder="Wat probeert dit deck te doen? Bijvoorbeeld: grote dino's, veel ramp, één explosieve beurt." aria-label="Plan van het deck">${esc(m.plan || '')}</textarea>
+` },
+    recs: { t: 'Aanbevelingen', open: true, sum: recsSum(d), html: recsHtml(d) },
+    plan: { t: 'Plan van het deck', open: true, sum: '', html: `      <textarea class="plan" id="deck-plan" placeholder="Wat probeert dit deck te doen? Bijvoorbeeld: grote dino's, veel ramp, één explosieve beurt." aria-label="Plan van het deck">${esc(m.plan || '')}</textarea>
       <label class="fld">Budget per kaart (mag leeg)<input id="deck-budget" value="${esc(m.budget || '')}" placeholder="bijv. €15, of: afhankelijk van hoe sterk" style="display:block;width:100%;padding:9px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);font-size:16px"></label>
       <div class="hint">Wordt op dit toestel bewaard. Klik op <b>Kopieer voor Claude</b> om dit samen met je kaartenlijst in het gesprek te plakken.</div>
-    </div>
-    <div class="dblock">
-      <h3>Eigen lijsten bij dit deck</h3>
-      ${linked.map(listChip).join('') || '<div class="hint" style="margin:0 0 8px">Nog geen lijsten gekoppeld. Importeer een lijst met aanbevelingen en koppel hem hier.</div>'}
+` },
+    lijsten: { t: 'Eigen lijsten bij dit deck', open: true, sum: '', html: `      ${linked.map(listChip).join('') || '<div class="hint" style="margin:0 0 8px">Nog geen lijsten gekoppeld. Importeer een lijst met aanbevelingen en koppel hem hier.</div>'}
       <div><button class="btn mini" id="deck-link">Lijsten koppelen…</button></div>
-    </div>
-    <div class="dblock">
-      <h3>Kaarten in het deck</h3>
-      <div class="dfilters">
+` },
+    kaarten: { t: 'Kaarten in het deck', open: true, sum: '', html: `      <div class="dfilters">
         <input type="search" id="dk-q" placeholder="Zoek in dit deck…" value="${esc(deckUI.q)}" aria-label="Zoek in dit deck">
         <select id="dk-cat" aria-label="Categorie"><option value="">Alle categorieën</option>${[...new Set(d.cards.flatMap((c) => c.c || []))].filter((k) => !GENERIC_CATS.has(k)).sort().map((k) => `<option value="${esc(k)}" ${deckUI.cat === k ? 'selected' : ''}>${esc(k)}</option>`).join('')}</select>
         <select id="dk-board" aria-label="Bord"><option value="main" ${deckUI.board === 'main' ? 'selected' : ''}>Hoofddeck</option><option value="S" ${deckUI.board === 'S' ? 'selected' : ''}>Sideboard</option><option value="M" ${deckUI.board === 'M' ? 'selected' : ''}>Maybeboard</option><option value="all" ${deckUI.board === 'all' ? 'selected' : ''}>Alles</option></select>
@@ -1261,7 +1264,10 @@ function renderDecks() {
         </div>
       </details>
       <div id="deck-cards"></div>
-    </div>`;
+` }
+  };
+  const blockHtml = (id) => { const df = defs[id], isOpen = bs.open[id] ?? df.open; return `<details class="dblock" data-b="${id}" ${isOpen ? 'open' : ''}><summary><b>${df.t}</b>${df.sum || ''}<span class="mvs"><button type="button" class="mvb" data-mv="up" data-b="${id}" aria-label="Blok omhoog" title="Omhoog">▲</button><button type="button" class="mvb" data-mv="down" data-b="${id}" aria-label="Blok omlaag" title="Omlaag">▼</button></span></summary><div class="dbody">${df.html}</div></details>`; };
+  body.innerHTML = `${headHtml}<div class="blkbar"><button type="button" class="btn mini" data-blk="close">Alles inklappen</button><button type="button" class="btn mini" data-blk="open">Alles uitklappen</button><button type="button" class="btn mini" data-blk="flip">Volgorde omdraaien</button><button type="button" class="btn mini" data-blk="reset">Standaardvolgorde</button></div>${bs.order.map(blockHtml).join('')}`;
   $('deck-foot').innerHTML = `Decks opgehaald: ${deckData.synced ? ago(deckData.synced) : 'onbekend'}. ` + deckRefreshHint();
   renderDeckFilterUI(); renderDeckCards(d);
 }
@@ -1312,8 +1318,12 @@ $('deck-body').addEventListener('change', (e) => {
   if (e.target.id === 'dk-cat') { deckUI.cat = e.target.value; renderDeckCards(d); }
   else if (e.target.id === 'dk-board') { deckUI.board = e.target.value; renderDeckCards(d); }
 });
-$('deck-body').addEventListener('toggle', (e) => { if (e.target.id === 'bracket-det') { state.bracketOpen = e.target.open; persist(); } }, true);
+$('deck-body').addEventListener('toggle', (e) => { const id = e.target.dataset && e.target.dataset.b; if (id) { const b = blkState(); if (b.open[id] !== e.target.open) { b.open[id] = e.target.open; persist(); } } }, true);
 $('deck-body').addEventListener('click', (e) => {
+  const mvb = e.target.closest('[data-mv]');
+  if (mvb) { e.preventDefault(); e.stopPropagation(); const b = blkState(), i = b.order.indexOf(mvb.dataset.b), j = mvb.dataset.mv === 'up' ? i - 1 : i + 1; if (i >= 0 && j >= 0 && j < b.order.length) { [b.order[i], b.order[j]] = [b.order[j], b.order[i]]; persist(); renderDecks(); } return; }
+  const bk = e.target.closest('[data-blk]');
+  if (bk) { const b = blkState(), a = bk.dataset.blk; if (a === 'flip') b.order.reverse(); else if (a === 'reset') { b.order = [...BLK_DEFAULT]; b.open = {}; } else BLK_DEFAULT.forEach((id) => { b.open[id] = a === 'open'; }); persist(); renderDecks(); return; }
   const dfc = e.target.closest('.fc[data-k^="d"]');
   if (dfc) { const S = { dtypes: deckF.types, dcolors: deckF.colors, dmvs: deckF.mvs, drar: deckF.rar }[dfc.dataset.k], v = dfc.dataset.k === 'dmvs' ? +dfc.dataset.v : dfc.dataset.v; S.has(v) ? S.delete(v) : S.add(v); renderDeckFilterUI(); const dd = curDeckObj(); if (dd) renderDeckCards(dd); return; }
   if (e.target.closest('#dk-fclear')) { deckF.types.clear(); deckF.colors.clear(); deckF.mvs.clear(); deckF.rar.clear(); deckF.pmin = deckF.pmax = null; if ($('dk-pmin')) $('dk-pmin').value = ''; if ($('dk-pmax')) $('dk-pmax').value = ''; renderDeckFilterUI(); const dd = curDeckObj(); if (dd) renderDeckCards(dd); return; }
@@ -1513,14 +1523,14 @@ $('scan-close').addEventListener('click', closeScan);
 $('dlg-scan').addEventListener('close', () => { if (stream) closeScan(); });
 $('scan-go').addEventListener('click', scanGo);
 $('scan-res').addEventListener('click', (e) => { const t = e.target.closest('[data-pick]'); if (!t) return; const g = byName.get(t.dataset.pick); closeScan(); $('q').value = g.name; setTab('search'); runSearch(); openPicker(g, scanHint); });
-$('btn-io').addEventListener('click', () => { $('io-text').value = JSON.stringify({ items: state.items, lists: state.lists, deckMeta: state.deckMeta, thr: state.thr, ship: state.ship, disc: state.disc }); $('dlg-io').showModal(); });
+$('btn-io').addEventListener('click', () => { $('io-text').value = JSON.stringify({ items: state.items, lists: state.lists, deckMeta: state.deckMeta, deckBlocks: state.deckBlocks, thr: state.thr, ship: state.ship, disc: state.disc }); $('dlg-io').showModal(); });
 $('io-close').addEventListener('click', () => $('dlg-io').close());
 $('io-copy').addEventListener('click', async () => { try { await navigator.clipboard.writeText($('io-text').value); note('Gekopieerd.', 2000); } catch { $('io-text').select(); } });
 $('io-import').addEventListener('click', () => {
   try {
     const d = JSON.parse($('io-text').value);
     if (!Array.isArray(d.items)) throw new Error('geen wantlist');
-    state = Object.assign(state, { items: d.items, lists: d.lists || state.lists || [], deckMeta: d.deckMeta || state.deckMeta || {}, thr: d.thr ?? state.thr, ship: d.ship ?? state.ship, disc: d.disc ?? state.disc }); persist();
+    state = Object.assign(state, { items: d.items, lists: d.lists || state.lists || [], deckMeta: d.deckMeta || state.deckMeta || {}, deckBlocks: d.deckBlocks || state.deckBlocks, thr: d.thr ?? state.thr, ship: d.ship ?? state.ship, disc: d.disc ?? state.disc }); persist();
     $('set-thr').value = state.thr; $('set-ship').value = state.ship; $('set-disc').value = state.disc; runSearch(); renderWantlist(); $('dlg-io').close(); note('Wantlist geïmporteerd.', 2500);
   } catch (e) { note('Importeren mislukt: ' + e.message, 4000); }
 });
