@@ -1124,6 +1124,10 @@ function deckRefreshHint() {
   const link = m && repo ? ` <a href="https://github.com/${m[1]}/${repo}/actions/workflows/decks.yml" target="_blank" rel="noopener noreferrer">Vernieuw de decks via GitHub ↗</a> (Run workflow; het duurt daarna een paar minuten).` : ' Vernieuwen gaat via GitHub: Actions → Decks ophalen uit Archidekt → Run workflow.';
   return 'Iets aangepast in Archidekt?' + link;
 }
+const comboHtml = (x) => `<div class="combo">${x.cards.map(esc).join(' + ')}<small>${esc(x.makes.join(', '))} · samen ${x.mana} mana${x.cards.length > 2 ? ' · ' + x.cards.length + ' kaarten' : ''}</small></div>`;
+async function refreshDecks() {
+  try { const rd = await fetch('data/decks.json', { cache: 'no-store' }); if (!rd.ok) return; const dp = await rd.json(); await DB.set('decks', dp); indexDecks(dp); renderDecks(); } catch {}
+}
 function renderDeckSelect() {
   const sel = $('deck-sel'), ds = deckData.decks;
   if (!ds.length) { sel.innerHTML = '<option value="">Nog geen decks</option>'; sel.disabled = true; return; }
@@ -1167,7 +1171,7 @@ function renderDecks() {
         <div style="color:var(--muted);font-size:13px;margin-bottom:8px">${esc(b.est[1])}. Dit is een indicatie, geen officieel oordeel.</div>
         <span class="pill ${b.gc.length > 3 ? 'warn' : b.gc.length === 0 ? 'ok' : ''}">Game Changers ${b.gc.length}/3</span><span class="pill ${b.ml.length ? 'warn' : 'ok'}">Mass land denial ${b.ml.length}</span><span class="pill">Extra beurten ${b.et.length}</span><span class="pill">Tutors ${b.tu.length}</span><span class="pill ${b.two.length ? '' : 'ok'}">Tweekaartscombo's ${d.combos ? b.two.length : '?'}</span>
         ${gcNames ? `<div style="font-size:13px;margin:4px 0">Game Changers: ${esc(gcNames)}</div>` : ''}
-        ${(d.combos || []).map((x) => `<div class="combo">${x.cards.map(esc).join(' + ')}<small>${esc(x.makes.join(', '))} · samen ${x.mana} mana${x.cards.length > 2 ? ' · ' + x.cards.length + ' kaarten' : ''}</small></div>`).join('')}
+        ${(d.combos || []).slice(0, 5).map(comboHtml).join('')}${(d.combos || []).length > 5 ? `<details><summary style="cursor:pointer;color:var(--accent);font-size:13px;padding:6px 0">Toon de overige ${d.combos.length - 5} combo's</summary>${d.combos.slice(5).map(comboHtml).join('')}</details>` : ''}
         ${d.combos ? '<div style="font-size:12px;color:var(--muted);margin-top:6px">Combo\'s via Commander Spellbook. In bracket 3 zijn tweekaartscombo\'s alleen laat in het spel de bedoeling (vanaf ongeveer beurt 6).</div>' : '<div style="font-size:12px;color:var(--muted)">Combo\'s zijn voor dit deck niet opgehaald.</div>'}
       </div>
       <div class="dblock">
@@ -1453,7 +1457,7 @@ $('tab-search').addEventListener('click', () => { setTab('search'); $('q').focus
   if (matchMedia('(min-width:900px)').matches) document.body.dataset.tab = 'wantlist';
   renderWantlist(); renderResults([]);
   try { const saved = await DB.get('cards'); if (saved) { indexCards(saved); const sdk = await DB.get('decks'); if (sdk) indexDecks(sdk); setStatus(); runSearch(); renderWantlist(); } } catch {}
-  renderDecks();
+  renderDecks(); if (navigator.onLine) refreshDecks();
   // één keer per dag automatisch bijwerken bij openen
   const age = meta.synced ? Date.now() - new Date(meta.synced).getTime() : Infinity;
   if (navigator.onLine && (age > 20 * 3600e3 || (cards.length && !hasMeta()))) sync(true);
