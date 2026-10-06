@@ -55,6 +55,32 @@ table.ls tbody tr.sel,table.ls tbody tr.sel:hover{background:color-mix(in srgb,v
 .bulk b{flex:1;min-width:110px}
 .bulk .btn{background:transparent;color:var(--bg);border-color:rgba(255,255,255,.4)}
 .bulk .btn.danger{background:#b4412c;border-color:#b4412c;color:#fff}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px}
+.chip{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:6px 12px;font-size:14px;white-space:nowrap}
+.chip .n{opacity:.65;margin-left:3px;font-size:12px}
+.chip.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chip.ghost{border-style:dashed;color:var(--muted)}
+details.fpanel{margin:0 0 10px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
+details.fpanel>summary{cursor:pointer;padding:9px 12px;font-weight:600;font-size:14px}
+details.fpanel>summary span{color:var(--accent);font-weight:700}
+.fgrid{display:grid;gap:12px 28px;padding:4px 12px 12px;grid-template-columns:repeat(auto-fit,minmax(min(330px,100%),1fr))}
+.fgrid>*{min-width:0}
+.fgrp>b{display:block;font-size:12px;color:var(--muted);margin:0 0 5px;font-weight:600}
+.fchips{display:flex;gap:6px;flex-wrap:wrap}
+.fc{min-width:38px;text-align:center;border:1px solid var(--line);border-radius:8px;padding:6px 10px;background:var(--panel);font-size:14px}
+.fc[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+.fprice{display:flex;gap:8px;align-items:center}
+.fprice input,.fgrp select{padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);font-size:16px;max-width:100%}
+.fprice input{width:96px}
+.alrow{display:flex;gap:10px;align-items:center;padding:11px 4px;border-bottom:1px solid var(--line);cursor:pointer}
+.alrow input{width:20px;height:20px;accent-color:var(--accent);margin:0;flex:none}
+.alrow span{flex:1;min-width:0;overflow-wrap:anywhere}
+.alrow small{color:var(--muted)}
+.newlist{display:flex;gap:8px;margin:12px 0}
+.newlist input{flex:1;min-width:0;padding:9px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-size:16px}
+.lmrow{display:flex;gap:6px;align-items:center;margin:6px 0}
+.lmrow input{flex:1;min-width:0;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-size:16px}
+.lmrow small{color:var(--muted);min-width:22px;text-align:right}
 .fld{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px}
 .fld input{display:block;width:100%;margin-top:4px;padding:9px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-size:16px}
 
@@ -176,6 +202,7 @@ table.ls .r{text-align:right}
   .kc .big{font-size:16px;white-space:nowrap}
   .why{display:none}
   .sig{min-width:48px;padding:5px 8px}
+  .chips{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}
   .settings{gap:10px}
   .settings input{width:84px}
 }
@@ -257,19 +284,33 @@ dialog[open]{max-height:94dvh;overflow:auto}
 <main>
   <section class="card" id="sec-wantlist" aria-label="Alle kaarten">
     <h2>Alle kaarten</h2>
+    <div class="chips" id="lchips" role="group" aria-label="Lijsten"></div>
     <div class="toolbar">
       <input type="search" id="lf" placeholder="Filter op naam…" autocomplete="off" aria-label="Filter op naam">
-      <select id="ldeck" aria-label="Deck"></select>
       <select id="lsort" aria-label="Sorteren">
         <option value="name">Sorteren: naam</option>
         <option value="ja">Sorteren: JA eerst</option>
         <option value="drop">Sorteren: grootste daling</option>
         <option value="price">Sorteren: prijs hoog → laag</option>
         <option value="koop">Sorteren: koopadvies</option>
-        <option value="deck">Sorteren: deck</option>
+        <option value="deck">Sorteren: lijst</option>
       </select>
       <button class="btn" id="btn-import">Lijst importeren</button>
     </div>
+    <details class="fpanel" id="fpanel">
+      <summary>Filters <span id="fcount"></span></summary>
+      <div class="fgrid">
+        <div class="fgrp"><b>Prijs (Cardmarket-trend)</b><div class="fprice"><input id="f-pmin" type="number" min="0" step="0.5" inputmode="decimal" placeholder="van €" aria-label="Prijs vanaf"> – <input id="f-pmax" type="number" min="0" step="0.5" inputmode="decimal" placeholder="tot €" aria-label="Prijs tot"></div></div>
+        <div class="fgrp" data-meta><b>Type</b><div class="fchips" id="f-types"></div></div>
+        <div class="fgrp" data-meta><b>Kleur</b><div class="fchips" id="f-colors"></div></div>
+        <div class="fgrp" data-meta><b>Mana value</b><div class="fchips" id="f-mv"></div></div>
+        <div class="fgrp"><b>Zeldzaamheid</b><div class="fchips" id="f-rar"></div></div>
+        <div class="fgrp"><b>Set</b><select id="f-set" aria-label="Set"><option value="">Alle sets</option></select></div>
+        <label class="chk"><input type="checkbox" id="f-ja"> Alleen kaarten met JA (onder je drempel)</label>
+        <p class="hint" id="f-meta-note" hidden style="margin:0">De gegevens voor type, kleur en mana value zijn nog niet geladen. Tik bovenaan op Synchroniseer.</p>
+        <div><button class="btn" id="f-clear">Wis filters</button></div>
+      </div>
+    </details>
     <p class="summary" id="lsum"></p>
     <details class="sett">
       <summary>Instellingen voor prijzen en koopadvies</summary>
@@ -287,6 +328,7 @@ dialog[open]{max-height:94dvh;overflow:auto}
     </details>
     <div class="bulk" id="bulk" hidden>
       <b id="bulk-n">0 geselecteerd</b>
+      <button class="btn" id="bulk-lists">Aan lijst(en)…</button>
       <button class="btn" id="bulk-edit">Aanpassen…</button>
       <button class="btn danger" id="bulk-del">Verwijderen</button>
       <button class="btn" id="bulk-clear">Wis selectie</button>
@@ -313,12 +355,31 @@ dialog[open]{max-height:94dvh;overflow:auto}
   <div class="zbar"><span id="z-cap"></span><a id="z-link" target="_blank" rel="noopener noreferrer">Scryfall ↗</a><button class="btn mini" id="z-close">Sluiten</button></div>
 </dialog>
 
+<dialog id="dlg-addlists">
+  <div class="dlg-h"><h3 id="al-title">Aan lijst(en) toevoegen</h3><button class="btn ghost mini" id="al-close">Sluiten</button></div>
+  <div class="dlg-b">
+    <p class="hint" id="al-hint" style="margin-top:0"></p>
+    <div id="al-list"></div>
+    <div class="newlist"><input id="al-new" placeholder="Nieuwe lijst…" autocomplete="off" aria-label="Naam nieuwe lijst"><button class="btn" id="al-newbtn">Maken</button></div>
+    <div class="btnrow"><button class="btn primary" id="al-go">Opslaan</button></div>
+  </div>
+</dialog>
+
+<dialog id="dlg-lists">
+  <div class="dlg-h"><h3>Lijsten beheren</h3><button class="btn ghost mini" id="lm-close">Sluiten</button></div>
+  <div class="dlg-b">
+    <div id="lm-rows"></div>
+    <div class="newlist"><input id="lm-new" placeholder="Nieuwe lijst (bijv. een deck)…" autocomplete="off" aria-label="Naam nieuwe lijst"><button class="btn primary" id="lm-add">Maken</button></div>
+    <p class="hint">Een kaart kan in meerdere lijsten staan. Een lijst verwijderen haalt de kaarten niet weg: ze blijven staan zonder lijst.</p>
+  </div>
+</dialog>
+
 <dialog id="dlg-bulk">
   <div class="dlg-h"><h3 id="bulk-title">Aanpassen</h3><button class="btn ghost mini" id="bulk-close">Sluiten</button></div>
   <div class="dlg-b">
     <p class="hint" style="margin-top:0">Alleen wat je invult of aanvinkt wordt gewijzigd.</p>
-    <label class="fld">Deck<input id="bk-deck" list="deck-list" placeholder="Laat leeg om niet te wijzigen" autocomplete="off"></label>
-    <label class="chk"><input type="checkbox" id="bk-nodeck"> Deck weghalen</label>
+    <label class="fld">Verplaatsen naar lijst<input id="bk-deck" list="deck-list" placeholder="Laat leeg om niet te wijzigen" autocomplete="off"></label>
+    <label class="chk"><input type="checkbox" id="bk-nodeck"> Uit de lijst halen (zonder lijst)</label>
     <label class="fld">Aantal<input id="bk-qty" type="number" min="1" inputmode="numeric" placeholder="Laat leeg om niet te wijzigen"></label>
     <label class="chk"><input type="checkbox" id="bk-unpin"> Gekozen uitvoering loskoppelen (dan telt weer de goedkoopste uitvoering)</label>
     <div class="btnrow"><button class="btn primary" id="bk-go">Toepassen</button></div>
@@ -329,7 +390,7 @@ dialog[open]{max-height:94dvh;overflow:auto}
   <div class="dlg-h"><h3>Lijst importeren</h3><button class="btn ghost mini" id="imp-close">Sluiten</button></div>
   <div class="dlg-b">
     <p class="hint" style="margin-top:0">Plak een lijst, één kaart per regel. Voorbeelden: <code>1 Sol Ring</code>, <code>2x Lightning Bolt</code> of <code>1 Sol Ring (CMM) 410</code>. Met setcode en nummer kies je meteen de exacte uitvoering. Of kies een <b>CSV-bestand</b>: de app herkent de kolommen zelf en laat je een voorbeeld zien voordat er iets wordt toegevoegd. Taal en conditie uit je bestand worden niet gebruikt; de app werkt altijd met de Engelse uitvoeringen.</p>
-    <label style="display:block;font-size:12px;color:var(--muted);margin:8px 0 4px">Deck voor deze kaarten (mag leeg)
+    <label style="display:block;font-size:12px;color:var(--muted);margin:8px 0 4px">Lijst voor deze kaarten (mag leeg)
       <input id="imp-deck" list="deck-list" style="display:block;width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-size:16px" autocomplete="off">
     </label>
     <datalist id="deck-list"></datalist>
@@ -415,7 +476,7 @@ const store = {
   load() { try { return JSON.parse(localStorage.getItem('wl') || '{}'); } catch { return {}; } },
   save(s) { try { localStorage.setItem('wl', JSON.stringify(s)); } catch {} }
 };
-let state = Object.assign({ items: [], thr: 10, ship: 0, disc: 5, deck: '', sort: 'name' }, store.load());
+let state = Object.assign({ items: [], lists: [], thr: 10, ship: 0, disc: 5, deck: '', sort: 'name' }, store.load());
 const NONE = '__none';
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2) + Date.now());
 const sel = new Set(); let lastRows = [], anchor = null;
@@ -524,12 +585,12 @@ function renderResults(list) {
   if (!list.length) { ul.innerHTML = ''; $('search-foot').textContent = $('q').value.trim().length >= 2 ? 'Niets gevonden. Probeer een deel van de naam.' : (cards.length ? 'Typ minstens twee letters.' : 'Synchroniseer eerst om de kaarten te laden.'); return; }
   $('search-foot').textContent = 'Tik op een kaart om de uitvoering te kiezen.';
   ul.innerHTML = list.map((g) => {
-    const c = cheapest(g), p = price(c), inWl = state.items.some((i) => norm(i.name) === g.key && !i.id);
+    const c = cheapest(g), p = price(c), nl = new Set(state.items.filter((i) => norm(i.name) === g.key).map((i) => i.deck || '')).size;
     return `<li><div class="row" data-open="${esc(g.key)}" role="button" tabindex="0" aria-label="${esc(g.name)}: kies uitvoering">
       <img loading="lazy" alt="" src="${smallImg(c)}">
       <div class="t"><b>${esc(g.name)}</b><span>${g.list.length} ${g.list.length === 1 ? 'uitvoering' : 'uitvoeringen'}</span></div>
       <div class="p num">${p != null ? 'vanaf<br><b>' + eur.format(p) + '</b>' : '–'}</div>
-      <button class="btn mini" data-add="${esc(g.key)}" ${inWl ? 'disabled' : ''}>${inWl ? 'Op lijst' : '+ Lijst'}</button>
+      <button class="btn mini" data-add="${esc(g.key)}" title="Aan lijst(en) toevoegen">${nl ? '✓ ' + nl + (nl === 1 ? ' lijst' : ' lijsten') : '+ Lijst'}</button>
     </div></li>`;
   }).join('');
 }
@@ -587,7 +648,7 @@ function openCard(id, fromPicker) {
   $('d-add').dataset.id = c.id;
   const ix = pickCtx?.itemIndex;
   if (ix != null && state.items[ix]) { const cur = state.items[ix].id === c.id; $('d-add').textContent = cur ? 'Dit is je gekozen uitvoering' : 'Gebruik deze uitvoering'; $('d-add').disabled = cur; }
-  else { const onList = state.items.some((i) => i.id === c.id); $('d-add').textContent = onList ? 'Op je lijst' : '+ Lijst'; $('d-add').disabled = onList; }
+  else updateAddLabel(c);
   $('d-other').style.display = byName.get(norm(c.n))?.list.length > 1 ? '' : 'none';
   if ($('dlg-pick').open) $('dlg-pick').close();
   if (!$('dlg-card').open) $('dlg-card').showModal();
@@ -595,17 +656,59 @@ function openCard(id, fromPicker) {
 }
 
 /* ---------- weergave: alle kaarten ---------- */
-function deckList() { return [...new Set(state.items.map((i) => i.deck).filter(Boolean))].sort((x, y) => x.localeCompare(y)); }
+const canonName = (n) => { const t = String(n || '').trim(); const k = t.toLowerCase(); return allLists().find((l) => l.toLowerCase() === k) || t; };
+function allLists() {
+  const m = new Map();
+  for (const n of [...(state.lists || []), ...state.items.map((i) => i.deck)]) { const t = String(n || '').trim(), k = t.toLowerCase(); if (k && !m.has(k)) m.set(k, t); }
+  return [...m.values()].sort((x, y) => x.localeCompare(y, 'nl', { sensitivity: 'base' }));
+}
+function mergeDupes() {
+  const m = new Map(), out = [];
+  for (const it of state.items) { const k = [norm(it.name), it.id || '', it.deck || ''].join('|'), ex = m.get(k); if (ex) ex.qty = (ex.qty || 1) + (it.qty || 1); else { m.set(k, it); out.push(it); } }
+  state.items = out;
+}
 function renderDeckUI() {
-  const decks = deckList(), sel = $('ldeck');
-  const none = state.items.filter((i) => !i.deck).length;
-  sel.innerHTML = `<option value="">Alle decks (${state.items.length})</option>` + decks.map((d) => `<option value="${esc(d)}">${esc(d)} (${state.items.filter((i) => i.deck === d).length})</option>`).join('') + (decks.length && none ? `<option value="${NONE}">Zonder deck (${none})</option>` : '');
-  if (state.deck && ![...sel.options].some((o) => o.value === state.deck)) state.deck = '';
-  sel.value = state.deck || ''; sel.style.display = decks.length ? '' : 'none';
-  $('deck-list').innerHTML = decks.map((d) => `<option value="${esc(d)}">`).join('');
+  const lists = allLists(), none = state.items.filter((i) => !i.deck).length;
+  if (state.deck && state.deck !== NONE && !lists.includes(state.deck)) state.deck = '';
+  if (state.deck === NONE && !(lists.length && none)) state.deck = '';
+  const chip = (v, label, n) => `<button class="chip ${(state.deck || '') === v ? 'on' : ''}" data-deck="${esc(v)}" aria-pressed="${(state.deck || '') === v}">${esc(label)}<span class="n">${n}</span></button>`;
+  $('lchips').innerHTML = chip('', 'Alle kaarten', state.items.length) + lists.map((l) => chip(l, l, state.items.filter((i) => i.deck === l).length)).join('') + (lists.length && none ? chip(NONE, 'Zonder lijst', none) : '') + '<button class="chip ghost" id="lists-mgr">+ Lijsten beheren</button>';
+  $('deck-list').innerHTML = lists.map((d) => `<option value="${esc(d)}">`).join('');
+}
+
+/* ---------- filters (prijs, type, kleur, mana value, zeldzaamheid, set) ---------- */
+const flt = { pmin: null, pmax: null, types: new Set(), colors: new Set(), mvs: new Set(), rar: new Set(), set: '', ja: false };
+const TYPES = [['C', 'Creature'], ['L', 'Land'], ['A', 'Artifact'], ['E', 'Enchantment'], ['I', 'Instant'], ['S', 'Sorcery'], ['P', 'Planeswalker'], ['B', 'Battle'], ['G', 'Legendary']];
+const COLORS = [['W', 'Wit'], ['U', 'Blauw'], ['B', 'Zwart'], ['R', 'Rood'], ['G', 'Groen'], ['C', 'Kleurloos'], ['M', 'Meerkleurig']];
+const RARS = [['c', 'Common'], ['u', 'Uncommon'], ['r', 'Rare'], ['m', 'Mythic']];
+const hasMeta = () => cards.length > 0 && cards.slice(0, 300).some((c) => c.mv !== undefined);
+const countFilters = () => (flt.pmin != null || flt.pmax != null ? 1 : 0) + (flt.types.size ? 1 : 0) + (flt.colors.size ? 1 : 0) + (flt.mvs.size ? 1 : 0) + (flt.rar.size ? 1 : 0) + (flt.set ? 1 : 0) + (flt.ja ? 1 : 0);
+const chipsHtml = (list, set, kind) => list.map(([v, l]) => `<button type="button" class="fc" data-k="${kind}" data-v="${esc(v)}" aria-pressed="${set.has(v)}">${esc(l)}</button>`).join('');
+function renderFilterUI() {
+  $('f-types').innerHTML = chipsHtml(TYPES, flt.types, 'types');
+  $('f-colors').innerHTML = chipsHtml(COLORS, flt.colors, 'colors');
+  $('f-mv').innerHTML = chipsHtml([0, 1, 2, 3, 4, 5, 6, 7].map((n) => [n, n === 7 ? '7+' : String(n)]), flt.mvs, 'mvs');
+  $('f-rar').innerHTML = chipsHtml(RARS, flt.rar, 'rar');
+  const sm = new Map(); for (const it of state.items) { const c = resolve(it); if (c) sm.set(c.s, c.sn); }
+  $('f-set').innerHTML = '<option value="">Alle sets</option>' + [...sm].sort((x, y) => x[1].localeCompare(y[1])).map(([c, n]) => `<option value="${esc(c)}">${esc(n)} (${esc(c)})</option>`).join('');
+  $('f-set').value = flt.set;
+  const meta = hasMeta(); document.querySelectorAll('#fpanel [data-meta]').forEach((el) => { el.style.opacity = meta ? '' : '.45'; }); $('f-meta-note').hidden = meta;
+  const n = countFilters(); $('fcount').textContent = n ? `(${n} actief)` : '';
+}
+function passFilters(r) {
+  const c = r.e?.c; if (!c) return false;
+  if (flt.pmin != null && !(r.e.p != null && r.e.p >= flt.pmin)) return false;
+  if (flt.pmax != null && !(r.e.p != null && r.e.p <= flt.pmax)) return false;
+  if (flt.types.size && ![...flt.types].some((t) => (c.ty || '').includes(t))) return false;
+  if (flt.colors.size) { const co = c.co || ''; if (![...flt.colors].some((x) => (x === 'C' ? co === '' : x === 'M' ? co.length > 1 : co.includes(x)))) return false; }
+  if (flt.mvs.size && !flt.mvs.has(Math.min(c.mv ?? 0, 7))) return false;
+  if (flt.rar.size && !flt.rar.has(c.r)) return false;
+  if (flt.set && c.s !== flt.set) return false;
+  if (flt.ja && r.e.sig !== 'ja') return false;
+  return true;
 }
 function renderWantlist() {
-  renderDeckUI();
+  renderDeckUI(); renderFilterUI();
   { let ch = false; for (const i of state.items) if (!i.u) { i.u = uid(); ch = true; } if (ch) persist(); }
   $('lsort').value = state.sort || 'name';
   const el = $('wl');
@@ -613,7 +716,8 @@ function renderWantlist() {
   updateBanner(all.filter((r) => r.e?.sig === 'ja'));
   if (!all.length) { el.innerHTML = '<div class="empty">Nog geen kaarten. Tik op “Lijst importeren” om een decklijst of CSV in te voegen, of zoek een kaart en tik op “+ Lijst”.</div>'; $('lsum').textContent = ''; sel.clear(); lastRows = []; syncSel(); return; }
   const q = norm($('lf').value || ''), dk = state.deck || '';
-  const rows = all.filter((r) => (!dk || (dk === NONE ? !r.it.deck : r.it.deck === dk)) && (!q || norm(r.it.name).includes(q)));
+  const inScope = all.filter((r) => (!dk || (dk === NONE ? !r.it.deck : r.it.deck === dk)) && (!q || norm(r.it.name).includes(q)));
+  const rows = countFilters() ? inScope.filter(passFilters) : inScope.slice();
   const byName_ = (a, b) => a.it.name.localeCompare(b.it.name);
   const cmp = {
     name: byName_,
@@ -626,7 +730,7 @@ function renderWantlist() {
   rows.sort(cmp);
   { const vis = new Set(rows.map((r) => r.it.u)); for (const u of [...sel]) if (!vis.has(u)) sel.delete(u); }
   const ja = rows.filter((r) => r.e?.sig === 'ja').length, stuks = rows.reduce((n, r) => n + (r.it.qty || 1), 0);
-  $('lsum').textContent = `${rows.length} ${rows.length === 1 ? 'kaart' : 'kaarten'}${stuks !== rows.length ? ` (${stuks} stuks)` : ''}${ja ? ` · ${ja}× JA` : ''}`;
+  $('lsum').textContent = `${rows.length}${rows.length !== inScope.length ? ' van ' + inScope.length : ''} ${rows.length === 1 && rows.length === inScope.length ? 'kaart' : 'kaarten'}${stuks !== rows.length ? ` (${stuks} stuks)` : ''}${ja ? ` · ${ja}× JA` : ''}`;
   if (!rows.length) { el.innerHTML = '<div class="empty">Geen kaarten die aan het filter voldoen.</div>'; lastRows = []; syncSel(); return; }
   el.innerHTML = `<table class="ls"><thead><tr><th><label class="selc" title="Alles selecteren"><input type="checkbox" id="sel-all" aria-label="Alles selecteren"></label>Kaart</th><th class="r">Prijs</th><th class="r">Koopadvies</th><th>Kopen?</th></tr></thead><tbody>` +
     rows.map(({ it, idx, e }) => {
@@ -745,7 +849,7 @@ let qTimer; const runSearch = () => renderResults(search($('q').value));
 $('q').addEventListener('input', () => { clearTimeout(qTimer); qTimer = setTimeout(runSearch, 120); });
 $('results').addEventListener('click', (e) => {
   const add = e.target.closest('[data-add]');
-  if (add) { const g = byName.get(add.dataset.add); state.items.push({ name: g.name, ...(curDeck() ? { deck: curDeck() } : {}) }); persist(); runSearch(); renderWantlist(); note(`${g.name} staat op je lijst (goedkoopste uitvoering).`, 2500); return; }
+  if (add) { const g = byName.get(add.dataset.add); openAddLists({ mode: 'card', name: g.name, id: null }); return; }
   const row = e.target.closest('[data-open]'); if (row) openPicker(byName.get(row.dataset.open));
 });
 $('results').addEventListener('keydown', (e) => { if (e.key === 'Enter') { const row = e.target.closest('[data-open]'); if (row) openPicker(byName.get(row.dataset.open)); } });
@@ -757,8 +861,7 @@ $('d-add').addEventListener('click', () => {
   const c = byId.get(+$('d-add').dataset.id); if (!c) return;
   const ix = pickCtx?.itemIndex;
   if (ix != null && state.items[ix]) { state.items[ix].id = c.id; state.items[ix].name = c.n; persist(); renderWantlist(); $('d-add').textContent = 'Dit is je gekozen uitvoering'; $('d-add').disabled = true; note(`Uitvoering gekozen: ${c.sn} #${c.cn}`, 2500); return; }
-  if (state.items.some((i) => i.id === c.id)) return;
-  state.items.push({ name: c.n, id: c.id, ...(curDeck() ? { deck: curDeck() } : {}) }); persist(); renderWantlist(); runSearch(); $('d-add').textContent = 'Op je lijst'; $('d-add').disabled = true;
+  openAddLists({ mode: 'card', name: c.n, id: c.id });
 });
 $('d-img').style.cursor = 'zoom-in';
 $('d-img').addEventListener('click', () => openZoom(+$('d-add').dataset.id));
@@ -814,8 +917,114 @@ $('bk-go').addEventListener('click', () => {
     if (unpin) delete it.id;
     n++;
   }
-  persist(); $('dlg-bulk').close(); renderWantlist(); note(`${n} ${n === 1 ? 'kaart' : 'kaarten'} aangepast.`, 3000);
+  mergeDupes(); persist(); $('dlg-bulk').close(); renderWantlist(); note(`${n} ${n === 1 ? 'kaart' : 'kaarten'} aangepast.`, 3000);
 });
+
+/* ---------- lijsten: kiezen, beheren ---------- */
+$('lchips').addEventListener('click', (e) => {
+  if (e.target.closest('#lists-mgr')) { renderLmRows(); $('lm-new').value = ''; $('dlg-lists').showModal(); return; }
+  const c = e.target.closest('[data-deck]'); if (!c) return;
+  state.deck = c.dataset.deck; persist(); renderWantlist();
+});
+function updateAddLabel(c) {
+  const n = new Set(state.items.filter((i) => i.id === c.id).map((i) => i.deck || '')).size;
+  $('d-add').textContent = n ? `In ${n} ${n === 1 ? 'lijst' : 'lijsten'} · wijzig` : '+ Aan lijst(en) toevoegen'; $('d-add').disabled = false;
+}
+let alCtx = null, alChecked = new Set();
+const alMatch = (i) => norm(i.name) === norm(alCtx.name) && (alCtx.id == null || i.id === alCtx.id);
+function openAddLists(ctx) {
+  alCtx = ctx;
+  if (ctx.mode === 'card') {
+    alChecked = new Set(state.items.filter(alMatch).map((i) => i.deck || ''));
+    $('al-title').textContent = ctx.name; $('al-go').textContent = 'Opslaan';
+    $('al-hint').textContent = 'Vink de lijsten aan waar deze kaart in moet staan. Uitvinken haalt de kaart uit die lijst.';
+  } else {
+    alChecked = new Set();
+    $('al-title').textContent = `${sel.size} ${sel.size === 1 ? 'kaart' : 'kaarten'} toevoegen aan lijst(en)`; $('al-go').textContent = 'Toevoegen';
+    $('al-hint').textContent = 'De geselecteerde kaarten worden aan de aangevinkte lijsten toegevoegd. Waar ze nu staan, blijven ze staan.';
+  }
+  $('al-new').value = ''; renderAddLists(); $('dlg-addlists').showModal();
+}
+function renderAddLists() {
+  const lists = allLists(), have = alCtx.mode === 'card' ? state.items.filter(alMatch) : [];
+  const rows = []; if (have.some((i) => !i.deck)) rows.push(['', 'Zonder lijst', have.filter((i) => !i.deck).length]);
+  for (const l of lists) rows.push([l, l, state.items.filter((i) => i.deck === l).length]);
+  $('al-list').innerHTML = rows.length ? rows.map(([v, l, n]) => `<label class="alrow"><input type="checkbox" data-v="${esc(v)}" ${alChecked.has(v) ? 'checked' : ''}><span>${esc(l)}</span><small>${n}</small></label>`).join('') : '<p class="hint">Je hebt nog geen lijsten. Maak hieronder je eerste lijst.</p>';
+}
+$('al-list').addEventListener('change', (e) => {
+  const v = e.target.dataset.v; if (v == null) return;
+  if (e.target.checked) { alChecked.add(v); if (v !== '' && alChecked.delete('')) renderAddLists(); } else alChecked.delete(v);
+});
+function alNew() {
+  const n = canonName($('al-new').value); if (!n) return;
+  if (!(state.lists || []).some((l) => l.toLowerCase() === n.toLowerCase())) state.lists = [...(state.lists || []), n];
+  alChecked.add(n); alChecked.delete(''); $('al-new').value = ''; persist(); renderAddLists(); renderDeckUI();
+}
+$('al-newbtn').addEventListener('click', alNew);
+$('al-new').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); alNew(); } });
+$('al-close').addEventListener('click', () => $('dlg-addlists').close());
+$('al-go').addEventListener('click', () => {
+  if (!alCtx) return;
+  if (alCtx.mode === 'bulk') {
+    const srcs = state.items.filter((i) => sel.has(i.u)); let n = 0;
+    for (const src of srcs) for (const v of alChecked) {
+      if (!v || state.items.some((i) => norm(i.name) === norm(src.name) && (i.id || null) === (src.id || null) && i.deck === v)) continue;
+      state.items.push({ name: src.name, ...(src.id ? { id: src.id } : {}), deck: v, ...(src.qty > 1 ? { qty: src.qty } : {}), u: uid() }); n++;
+    }
+    sel.clear(); persist(); $('dlg-addlists').close(); runSearch(); renderWantlist();
+    note(n ? `${n} ${n === 1 ? 'kaart' : 'kaarten'} toegevoegd aan ${alChecked.size} ${alChecked.size === 1 ? 'lijst' : 'lijsten'}.` : 'Niets toegevoegd: de kaarten stonden er al in.', 3500);
+    return;
+  }
+  const have = state.items.filter(alMatch), haveBy = new Map();
+  for (const i of have) { const k = i.deck || ''; if (!haveBy.has(k)) haveBy.set(k, []); haveBy.get(k).push(i); }
+  let added = 0;
+  for (const v of alChecked) if (!haveBy.has(v)) { state.items.push({ name: alCtx.name, ...(alCtx.id != null ? { id: alCtx.id } : {}), ...(v ? { deck: v } : {}), u: uid() }); added++; }
+  const rm = new Set(); for (const [k, arr] of haveBy) if (!alChecked.has(k)) arr.forEach((i) => rm.add(i.u));
+  $('dlg-addlists').close();
+  if (rm.size) removeItems(rm); else { persist(); runSearch(); renderWantlist(); note(added ? `${alCtx.name} staat nu in ${alChecked.size} ${alChecked.size === 1 ? 'lijst' : 'lijsten'}.` : 'Niets gewijzigd.', 3000); }
+  if ($('dlg-card').open) { const c = byId.get(+$('d-add').dataset.id); if (c) updateAddLabel(c); }
+});
+$('bulk-lists').addEventListener('click', () => openAddLists({ mode: 'bulk' }));
+function renderLmRows() {
+  const lists = allLists();
+  $('lm-rows').innerHTML = lists.length ? lists.map((l) => `<div class="lmrow" data-l="${esc(l)}"><input value="${esc(l)}" aria-label="Naam van lijst ${esc(l)}"><small>${state.items.filter((i) => i.deck === l).length}</small><button class="btn mini" data-act="rename">Hernoem</button><button class="btn mini" data-act="del">Verwijder</button></div>`).join('') : '<p class="hint" style="margin-top:0">Je hebt nog geen lijsten.</p>';
+}
+function lmAdd() {
+  const n = canonName($('lm-new').value); if (!n) return;
+  if (!(state.lists || []).some((l) => l.toLowerCase() === n.toLowerCase()) && !state.items.some((i) => (i.deck || '').toLowerCase() === n.toLowerCase())) state.lists = [...(state.lists || []), n];
+  $('lm-new').value = ''; persist(); renderLmRows(); renderWantlist();
+}
+$('lm-add').addEventListener('click', lmAdd);
+$('lm-new').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); lmAdd(); } });
+$('lm-close').addEventListener('click', () => $('dlg-lists').close());
+$('lm-rows').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  const row = b.closest('.lmrow'), old = row.dataset.l;
+  if (b.dataset.act === 'rename') {
+    const nn = canonName(row.querySelector('input').value); if (!nn || nn === old) return;
+    state.items.forEach((i) => { if (i.deck === old) i.deck = nn; });
+    state.lists = [...new Set((state.lists || []).map((l) => (l === old ? nn : l)))];
+    if (state.deck === old) state.deck = nn;
+    mergeDupes(); persist(); renderLmRows(); renderWantlist(); note(`Lijst hernoemd naar “${nn}”.`, 2500);
+  } else if (confirm(`Lijst “${old}” verwijderen? De kaarten blijven bestaan, zonder lijst.`)) {
+    state.items.forEach((i) => { if (i.deck === old) delete i.deck; });
+    state.lists = (state.lists || []).filter((l) => l !== old); if (state.deck === old) state.deck = '';
+    mergeDupes(); persist(); renderLmRows(); renderWantlist();
+  }
+});
+
+/* ---------- filters: bediening ---------- */
+$('fpanel').addEventListener('click', (e) => {
+  const b = e.target.closest('.fc'); if (!b) return;
+  const k = b.dataset.k, v = k === 'mvs' ? +b.dataset.v : b.dataset.v, S = flt[k];
+  S.has(v) ? S.delete(v) : S.add(v); renderWantlist();
+});
+let fT; const fLater = () => { clearTimeout(fT); fT = setTimeout(renderWantlist, 200); };
+$('f-pmin').addEventListener('input', (e) => { flt.pmin = num(e.target.value); fLater(); });
+$('f-pmax').addEventListener('input', (e) => { flt.pmax = num(e.target.value); fLater(); });
+$('f-set').addEventListener('change', (e) => { flt.set = e.target.value; renderWantlist(); });
+$('f-ja').addEventListener('change', (e) => { flt.ja = e.target.checked; renderWantlist(); });
+$('f-clear').addEventListener('click', () => { flt.pmin = flt.pmax = null; flt.types.clear(); flt.colors.clear(); flt.mvs.clear(); flt.rar.clear(); flt.set = ''; flt.ja = false; $('f-pmin').value = $('f-pmax').value = ''; $('f-ja').checked = false; renderWantlist(); });
 $('btn-clear').addEventListener('click', () => { if (confirm('Hele lijst leegmaken?')) { state.items = []; state.deck = ''; persist(); runSearch(); renderWantlist(); } });
 let popT = null, popId = null; const canHover = matchMedia('(hover:hover) and (pointer:fine)');
 function showPop(id, x, y) {
@@ -842,7 +1051,6 @@ function openZoom(id) {
 $('z-close').addEventListener('click', () => $('dlg-zoom').close());
 $('dlg-zoom').addEventListener('click', (e) => { if (e.target.id === 'dlg-zoom' || e.target.id === 'z-img') $('dlg-zoom').close(); });
 let lfT; $('lf').addEventListener('input', () => { clearTimeout(lfT); lfT = setTimeout(renderWantlist, 120); });
-$('ldeck').addEventListener('change', (e) => { state.deck = e.target.value; persist(); renderWantlist(); });
 $('lsort').addEventListener('change', (e) => { state.sort = e.target.value; persist(); renderWantlist(); });
 
 /* lijst plakken */
@@ -989,14 +1197,14 @@ $('scan-close').addEventListener('click', closeScan);
 $('dlg-scan').addEventListener('close', () => { if (stream) closeScan(); });
 $('scan-go').addEventListener('click', scanGo);
 $('scan-res').addEventListener('click', (e) => { const t = e.target.closest('[data-pick]'); if (!t) return; const g = byName.get(t.dataset.pick); closeScan(); $('q').value = g.name; setTab('search'); runSearch(); openPicker(g, scanHint); });
-$('btn-io').addEventListener('click', () => { $('io-text').value = JSON.stringify({ items: state.items, thr: state.thr, ship: state.ship, disc: state.disc }); $('dlg-io').showModal(); });
+$('btn-io').addEventListener('click', () => { $('io-text').value = JSON.stringify({ items: state.items, lists: state.lists, thr: state.thr, ship: state.ship, disc: state.disc }); $('dlg-io').showModal(); });
 $('io-close').addEventListener('click', () => $('dlg-io').close());
 $('io-copy').addEventListener('click', async () => { try { await navigator.clipboard.writeText($('io-text').value); note('Gekopieerd.', 2000); } catch { $('io-text').select(); } });
 $('io-import').addEventListener('click', () => {
   try {
     const d = JSON.parse($('io-text').value);
     if (!Array.isArray(d.items)) throw new Error('geen wantlist');
-    state = Object.assign(state, { items: d.items, thr: d.thr ?? state.thr, ship: d.ship ?? state.ship, disc: d.disc ?? state.disc }); persist();
+    state = Object.assign(state, { items: d.items, lists: d.lists || state.lists || [], thr: d.thr ?? state.thr, ship: d.ship ?? state.ship, disc: d.disc ?? state.disc }); persist();
     $('set-thr').value = state.thr; $('set-ship').value = state.ship; $('set-disc').value = state.disc; runSearch(); renderWantlist(); $('dlg-io').close(); note('Wantlist geïmporteerd.', 2500);
   } catch (e) { note('Importeren mislukt: ' + e.message, 4000); }
 });
@@ -1012,7 +1220,7 @@ $('tab-search').addEventListener('click', () => { setTab('search'); $('q').focus
   try { const saved = await DB.get('cards'); if (saved) { indexCards(saved); setStatus(); runSearch(); renderWantlist(); } } catch {}
   // één keer per dag automatisch bijwerken bij openen
   const age = meta.synced ? Date.now() - new Date(meta.synced).getTime() : Infinity;
-  if (navigator.onLine && age > 20 * 3600e3) sync(true);
+  if (navigator.onLine && (age > 20 * 3600e3 || (cards.length && !hasMeta()))) sync(true);
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
 })();
 </script>
