@@ -24,6 +24,15 @@ if (!res.ok) throw new Error('Scryfall download mislukt: ' + res.status);
 const rl = createInterface({ input: Readable.fromWeb(res.body).pipe(createGunzip()), crlfDelay: Infinity });
 
 const imgOf = (c) => (c.image_uris || c.card_faces?.[0]?.image_uris || {});
+// Kaartgegevens om op te filteren: type (letters), mana value en kleuren
+const TYPE_LETTERS = { Creature: 'C', Land: 'L', Artifact: 'A', Enchantment: 'E', Instant: 'I', Sorcery: 'S', Planeswalker: 'P', Battle: 'B', Kindred: 'K', Tribal: 'K', Legendary: 'G' };
+const typesOf = (c) => {
+  const line = c.type_line || (c.card_faces || []).map((f) => f.type_line).join(' // ');
+  let out = '';
+  for (const half of line.split(/\s+\/\/\s+/)) for (const w of half.split('—')[0].trim().split(/\s+/)) { const l = TYPE_LETTERS[w]; if (l && !out.includes(l)) out += l; }
+  return out;
+};
+const colorsOf = (c) => { const set = new Set([...(c.colors || []), ...(c.card_faces || []).flatMap((f) => f.colors || [])]); return [...'WUBRG'].filter((x) => set.has(x)).join(''); };
 const cards = [];
 for await (const line of rl) {
   if (!line.trim()) continue;
@@ -41,6 +50,9 @@ for await (const line of rl) {
     cn: c.collector_number,
     d: c.released_at,
     r: c.rarity[0],                       // c/u/r/m/s/b
+    ty: typesOf(c),                       // C=creature L=land A=artifact E=enchantment I=instant S=sorcery P=planeswalker B=battle K=kindred G=legendary
+    mv: Math.max(0, Math.min(20, Math.round(c.cmc ?? 0))), // mana value
+    co: colorsOf(c),                      // kleuren (WUBRG); leeg = kleurloos
     f: c.finishes?.includes('nonfoil') ? 0 : 1, // 1 = alleen foil
     i: (img.small || '').replace('https://cards.scryfall.io/', ''),
     t: p?.trend ?? null,                  // Price Trend (EUR)
