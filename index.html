@@ -1,0 +1,936 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#17212b">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Wantlist prijzen</title>
+<style>
+:root{
+  --bg:#e8ecef; --panel:#f8f9fa; --ink:#17212b; --muted:#5b6977; --line:#cdd5db;
+  --accent:#2b4c7e; --accent-ink:#fff;
+  --go:#0b6e4f; --go-bg:#d6eee3; --up:#b4412c; --down:#0b6e4f; --stamp-no:#8794a0;
+  --radius:10px;
+}
+@media (prefers-color-scheme:dark){
+  :root{ --bg:#10161d; --panel:#192330; --ink:#e6ecf2; --muted:#93a1ae; --line:#2a3745;
+    --accent:#7fa6e0; --accent-ink:#0b1420; --go:#4fd1a1; --go-bg:#12392d; --up:#ef8a73; --down:#4fd1a1; --stamp-no:#6b7a88; }
+}
+:root[data-theme="light"]{ --bg:#e8ecef; --panel:#f8f9fa; --ink:#17212b; --muted:#5b6977; --line:#cdd5db; --accent:#2b4c7e; --accent-ink:#fff; --go:#0b6e4f; --go-bg:#d6eee3; --up:#b4412c; --down:#0b6e4f; --stamp-no:#8794a0; }
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.num{font-variant-numeric:tabular-nums}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:8px 12px;min-height:40px}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+.btn.ghost{background:transparent}
+.btn[disabled]{opacity:.5;cursor:default}
+
+header.top{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--ink);color:var(--bg);flex-wrap:wrap}
+header.top h1{margin:0;font-size:18px;font-weight:700;letter-spacing:.2px}
+header.top .status{font-size:13px;opacity:.8;flex:1;min-width:140px}
+header.top .btn{background:transparent;color:var(--bg);border-color:rgba(255,255,255,.35)}
+header.top .btn.primary{background:var(--bg);color:var(--ink);border-color:var(--bg)}
+
+#banner{display:none;margin:12px 16px 0;padding:10px 14px;border-radius:var(--radius);background:var(--go-bg);color:var(--go);font-weight:600}
+#banner.show{display:block}
+#msg{display:none;margin:12px 16px 0;padding:10px 14px;border-radius:var(--radius);background:var(--panel);border:1px solid var(--line)}
+#msg.show{display:block}
+
+main{display:grid;gap:16px;padding:16px;grid-template-columns:minmax(300px,420px) 1fr;align-items:start}
+section.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px}
+section.card h2{margin:0 0 10px;font-size:16px}
+.searchbar{display:flex;gap:8px}
+.searchbar input{flex:1;min-width:0;padding:11px 12px;border-radius:8px;border:1px solid var(--line);background:var(--bg);font-size:16px}
+
+.res{list-style:none;margin:10px 0 0;padding:0}
+.res li{border-top:1px solid var(--line)}
+.res li:first-child{border-top:0}
+.res .row{display:flex;align-items:center;gap:10px;padding:8px 2px}
+.res img{width:36px;height:50px;border-radius:3px;object-fit:cover;background:var(--line);flex:none}
+.res .t{flex:1;min-width:0}
+.res .t b{display:block}
+.res .t span{color:var(--muted);font-size:13px}
+.res .p{text-align:right;white-space:nowrap}
+.vers{padding:0 0 8px 46px}
+.vers .v{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:13px;border-top:1px dashed var(--line)}
+.vers .v:first-child{border-top:0}
+.vers .v .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mini{padding:4px 9px;min-height:30px;font-size:13px}
+
+.sig{display:inline-block;min-width:54px;text-align:center;padding:5px 10px;border-radius:6px;font-weight:800;letter-spacing:.5px;transform:rotate(-2deg)}
+.sig.ja{background:var(--go);color:#fff}
+.sig.nee{border:2px solid var(--stamp-no);color:var(--stamp-no);padding:3px 8px}
+.sig.geen{border:2px dashed var(--line);color:var(--muted);padding:3px 8px}
+
+.settings{display:flex;flex-wrap:wrap;gap:14px;align-items:end;margin:0 0 12px;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.settings label{display:flex;flex-direction:column;font-size:12px;color:var(--muted);gap:3px}
+.settings input{width:96px;padding:7px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg)}
+
+table.wl{width:100%;border-collapse:collapse}
+table.wl th{font-size:12px;font-weight:600;color:var(--muted);text-align:left;padding:6px 8px;border-bottom:2px solid var(--line);white-space:nowrap}
+table.wl td{padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
+table.wl .r{text-align:right}
+table.wl input.small{width:72px;padding:6px 7px;border:1px solid var(--line);border-radius:6px;background:var(--bg);text-align:right}
+.name{display:flex;align-items:center;gap:10px;min-width:170px}
+.name img{width:30px;height:42px;border-radius:3px;object-fit:cover;background:var(--line)}
+.name small{display:block;color:var(--muted)}
+.chg{white-space:nowrap}
+.chg .d{font-weight:600}
+.chg.down .d{color:var(--down)} .chg.up .d{color:var(--up)}
+.chg small{display:block;color:var(--muted)}
+svg.spark{display:block}
+.rm{border:0;background:transparent;color:var(--muted);font-size:20px;line-height:1;padding:4px 8px}
+.empty{color:var(--muted);padding:18px 4px}
+.foot{color:var(--muted);font-size:12px;margin-top:12px}
+
+/* navigatie */
+.why{display:block;color:var(--muted);font-size:11px;margin-top:5px;max-width:150px}
+main{display:block;max-width:1100px;margin:0 auto;padding:16px}
+body[data-tab="wantlist"] #sec-search{display:none}
+body[data-tab="search"] #sec-wantlist{display:none}
+.tabs{display:flex;gap:6px;max-width:1100px;margin:12px auto 0;padding:0 16px}
+.tabs button{border:1px solid var(--line);background:var(--panel);border-radius:8px 8px 0 0;padding:10px 20px;font-weight:600}
+.tabs button[aria-selected="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+
+/* lijst "Alle kaarten" */
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 10px}
+.toolbar input[type=search]{flex:1;min-width:150px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);font-size:16px}
+.toolbar select{padding:9px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);max-width:48vw}
+.summary{color:var(--muted);font-size:13px;margin:0 0 6px}
+details.sett{margin:0 0 10px}
+details.sett summary{cursor:pointer;color:var(--muted);font-size:13px;padding:4px 0}
+table.ls{width:100%;border-collapse:collapse}
+table.ls th{font-size:12px;font-weight:600;color:var(--muted);text-align:left;padding:6px 8px;border-bottom:2px solid var(--line);white-space:nowrap}
+table.ls td{padding:8px;border-bottom:1px solid var(--line);vertical-align:middle}
+table.ls tbody tr{cursor:pointer}
+table.ls tbody tr:hover{background:color-mix(in srgb,var(--accent) 8%,transparent)}
+table.ls .r{text-align:right}
+.cn{display:flex;gap:10px;align-items:center;min-width:0}
+.cn .th{width:36px;height:50px;border-radius:4px;border:0;padding:0;background:var(--line);flex:none;cursor:zoom-in;overflow:hidden}
+.cn .th img{width:100%;height:100%;object-fit:cover;display:block}
+.cn .nm{min-width:0;flex:1}
+.cn .nm b{display:block}
+.cn .nm small{color:var(--muted);display:block}
+.deck{display:inline-block;font-size:11px;font-weight:600;padding:1px 7px;border-radius:10px;background:var(--line);color:var(--ink);margin-left:6px;vertical-align:1px}
+.pcw{display:flex;align-items:center;gap:10px;justify-content:flex-end}
+.pc .big{font-weight:700;font-size:16px;display:block}
+.pc small,.kc small{display:block;color:var(--muted);font-size:12px}
+.pc small.down{color:var(--down)} .pc small.up{color:var(--up)}
+.pc a{font-size:12px;color:var(--accent)}
+.kc .big{font-weight:800;font-size:17px;color:var(--go);display:block}
+.pop{position:fixed;z-index:60;display:none;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:6px;box-shadow:0 12px 34px rgba(0,0,0,.4)}
+.pop.show{display:block}
+.pop img{display:block;width:230px;aspect-ratio:488/680;object-fit:cover;border-radius:10px;background:var(--line);cursor:zoom-in}
+.pop small{display:block;text-align:center;color:var(--muted);font-size:11px;padding:4px 0 0}
+#dlg-zoom{width:min(760px,96vw);background:transparent;border:0;padding:0;overflow:visible;max-height:none}
+#dlg-zoom img{display:block;max-width:100%;max-height:86dvh;margin:0 auto;border-radius:18px;cursor:zoom-out;background:var(--line)}
+#dlg-zoom .zbar{display:flex;gap:10px;align-items:center;justify-content:center;color:#fff;font-size:13px;margin:10px auto 0;flex-wrap:wrap;background:rgba(0,0,0,.78);padding:8px 12px;border-radius:12px;width:fit-content;max-width:100%}
+#dlg-zoom .zbar .btn{color:#17212b;background:#fff;border-color:#fff}
+#dlg-zoom .zbar a{color:#cfe0ff}
+.filerow{display:flex;gap:10px;align-items:center;margin:8px 0;flex-wrap:wrap}
+.maprow{display:grid;grid-template-columns:140px 1fr;gap:8px 10px;align-items:center;margin:10px 0}
+.maprow label{font-size:13px;color:var(--muted)}
+.maprow select{padding:7px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);min-width:0}
+.mapprev{font-size:13px;margin:8px 0;border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--bg)}
+.mapprev div{padding:2px 0}
+.mapprev .ok{color:var(--go)} .mapprev .bad{color:var(--up)}
+.chk{display:flex;gap:8px;align-items:center;font-size:14px;margin:6px 0}
+@media (max-width:899px){
+  main{padding:12px;padding-bottom:84px}
+  .tabs{position:fixed;left:0;right:0;bottom:0;margin:0;max-width:none;background:var(--ink);padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px));z-index:5}
+  .tabs button{flex:1;border:0;border-radius:8px;padding:12px;background:transparent;color:var(--bg)}
+  .tabs button[aria-selected="true"]{background:var(--bg);color:var(--ink)}
+  table.ls thead{display:none}
+  table.ls,table.ls tbody{display:block}
+  table.ls tr{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:6px 10px;padding:10px 0;border-bottom:1px solid var(--line)}
+  table.ls td{border:0;padding:0}
+  table.ls td.c-name{grid-column:1/4}
+  table.ls td.c-price{grid-column:1}
+  table.ls td.c-koop{grid-column:2}
+  table.ls td.c-sig{grid-column:3;align-self:center}
+  table.ls td.r{text-align:left}
+  .pcw{flex-direction:column-reverse;align-items:flex-start;gap:4px}
+  .kc .big{font-size:16px;white-space:nowrap}
+  .why{display:none}
+  .sig{min-width:48px;padding:5px 8px}
+  .settings{gap:10px}
+  .settings input{width:84px}
+}
+
+dialog{border:1px solid var(--line);border-radius:14px;background:var(--panel);color:var(--ink);padding:0;width:min(520px,94vw)}
+dialog::backdrop{background:rgba(0,0,0,.55)}
+.dlg-h{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--line)}
+.dlg-h h3{margin:0;font-size:16px}
+.dlg-b{padding:14px}
+.cam{position:relative;background:#000;border-radius:10px;overflow:hidden}
+.cam video{display:block;width:100%;max-height:60vh;object-fit:cover}
+.cam .frame{position:absolute;top:50%;left:50%;height:86%;aspect-ratio:63/88;transform:translate(-50%,-50%);border:2px solid rgba(255,255,255,.85);border-radius:10px}
+.cam .band{position:absolute;left:4%;right:15%;top:2.5%;height:9.5%;border:2px solid #4fd1a1;border-radius:4px}
+.scanres{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.hint{color:var(--muted);font-size:13px;margin:8px 0 0}
+textarea.io{width:100%;min-height:120px;border:1px solid var(--line);border-radius:8px;background:var(--bg);padding:8px;font:12px/1.4 ui-monospace,monospace;color:var(--ink)}
+
+/* uitvoering kiezen */
+.pick-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px}
+.pick{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:6px;text-align:left;display:flex;flex-direction:column;gap:4px}
+.pick img{width:100%;aspect-ratio:488/680;object-fit:cover;border-radius:6px;background:var(--line)}
+.pick b{font-size:12px;line-height:1.2}
+.pick span{font-size:12px;color:var(--muted)}
+.pick.hit{outline:3px solid var(--go)}
+.badge{display:inline-block;font-size:11px;padding:1px 6px;border-radius:4px;background:var(--line);color:var(--ink);margin-left:4px}
+/* resultaat */
+#dlg-card{width:min(860px,96vw)}
+.detail{display:grid;grid-template-columns:minmax(200px,300px) 1fr;gap:18px;align-items:start}
+.detail .bigimg img{width:100%;border-radius:12px;display:block;background:var(--line);aspect-ratio:488/680;object-fit:cover}
+.detail .cap{font-size:12px;color:var(--muted);margin-top:6px}
+.cap a,.slink,.foot a{color:var(--accent)}
+.verdict{border:2px solid var(--go);background:var(--go-bg);color:var(--ink);border-radius:12px;padding:12px 14px;margin:0 0 12px}
+.verdict.none{border-color:var(--line);background:var(--bg)}
+.verdict .big{font-size:26px;font-weight:800;line-height:1.1;color:var(--go)}
+.verdict.none .big{color:var(--muted);font-size:18px}
+.verdict small{display:block;color:var(--muted);margin-top:4px}
+.srow{display:grid;grid-template-columns:1fr auto auto;gap:2px 14px;padding:10px 0;border-top:1px solid var(--line);align-items:baseline}
+.srow:first-of-type{border-top:0}
+.srow .slabel small,.srow .sprice small{display:block;color:var(--muted);font-size:12px}
+.srow .sprice,.srow .stotal{text-align:right}
+.srow .slink{grid-column:1/4;font-size:13px}
+.d-sub{color:var(--muted);margin:0 0 10px}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+@media (max-width:640px){
+  .detail{display:block}
+  .detail .bigimg{float:left;width:112px;margin:0 12px 6px 0}
+  .detail .bigimg img{border-radius:8px}
+  .detail .cap{font-size:11px}
+  .verdict{clear:both}
+  .d-sub{margin-bottom:8px}
+  dialog{width:100vw!important;max-width:100vw;height:100dvh;max-height:100dvh;border-radius:0;border:0}
+  .verdict .big{font-size:24px}
+}
+dialog[open]{max-height:94dvh;overflow:auto}
+.nm-cell small{display:block;color:var(--muted);font-size:12px}
+.nm-cell a,.price-cell a{font-size:12px;color:var(--accent)}
+.res .row{cursor:pointer}
+
+@media (prefers-reduced-motion:no-preference){ .sig{transition:transform .15s} }
+</style>
+</head>
+<body data-tab="wantlist">
+
+<header class="top">
+  <h1>Wantlist prijzen</h1>
+  <div class="status num" id="status">Nog niet gesynchroniseerd</div>
+  <button class="btn" id="btn-io">Back-up</button>
+  <button class="btn primary" id="btn-sync">Synchroniseer</button>
+</header>
+
+<div id="banner" role="status"></div>
+<div id="msg" role="status"></div>
+
+<nav class="tabs" aria-label="Weergave">
+  <button id="tab-wantlist" aria-selected="true">Alle kaarten</button>
+  <button id="tab-search" aria-selected="false">Zoeken</button>
+</nav>
+
+<main>
+  <section class="card" id="sec-wantlist" aria-label="Alle kaarten">
+    <h2>Alle kaarten</h2>
+    <div class="toolbar">
+      <input type="search" id="lf" placeholder="Filter op naam…" autocomplete="off" aria-label="Filter op naam">
+      <select id="ldeck" aria-label="Deck"></select>
+      <select id="lsort" aria-label="Sorteren">
+        <option value="name">Sorteren: naam</option>
+        <option value="ja">Sorteren: JA eerst</option>
+        <option value="drop">Sorteren: grootste daling</option>
+        <option value="price">Sorteren: prijs hoog → laag</option>
+        <option value="koop">Sorteren: koopadvies</option>
+        <option value="deck">Sorteren: deck</option>
+      </select>
+      <button class="btn" id="btn-import">Lijst importeren</button>
+    </div>
+    <p class="summary" id="lsum"></p>
+    <details class="sett">
+      <summary>Instellingen voor prijzen en koopadvies</summary>
+      <div class="settings" style="margin-top:8px">
+        <label>Verzending standaard (€)
+          <input id="set-ship" type="number" min="0" step="0.05" inputmode="decimal">
+        </label>
+        <label>Beurskorting (% onder online)
+          <input id="set-disc" type="number" min="0" max="50" step="1" inputmode="decimal">
+        </label>
+        <label>JA-drempel (% onder 30 dgn)
+          <input id="set-thr" type="number" min="0" max="90" step="1" inputmode="decimal">
+        </label>
+      </div>
+    </details>
+    <div id="wl"></div>
+    <p class="foot">Alle uitvoeringen zijn Engels. <b>Prijs</b> = Cardmarket Price Trend. De prijslijst heeft geen conditie of taal, dus dit is de trend over alle condities en talen: een indicatie, geen NM/EX-prijs. <b>Koopadvies</b> = (prijs + verzending) min beurskorting. Grafiekje: 30-daggemiddelde → 7-daggemiddelde → nu. De bron-link opent Cardmarket met Engels en EX of beter als filter, voor zover Cardmarket dat overneemt. <button class="btn ghost mini" id="btn-clear" style="border:0;text-decoration:underline">Lijst leegmaken</button></p>
+  </section>
+
+  <section class="card" id="sec-search" aria-label="Zoeken">
+    <h2>Kaart zoeken</h2>
+    <div class="searchbar">
+      <input id="q" type="search" placeholder="Typ een kaartnaam…" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Kaartnaam">
+      <button class="btn" id="btn-scan" title="Kaart scannen met de camera">Scan</button>
+    </div>
+    <ul class="res" id="results"></ul>
+    <p class="foot" id="search-foot"></p>
+  </section>
+</main>
+
+<div class="pop" id="pop" role="tooltip"><img id="pop-img" alt=""><small>Klik voor groot</small></div>
+
+<dialog id="dlg-zoom">
+  <img id="z-img" alt="">
+  <div class="zbar"><span id="z-cap"></span><a id="z-link" target="_blank" rel="noopener noreferrer">Scryfall ↗</a><button class="btn mini" id="z-close">Sluiten</button></div>
+</dialog>
+
+<dialog id="dlg-imp">
+  <div class="dlg-h"><h3>Lijst importeren</h3><button class="btn ghost mini" id="imp-close">Sluiten</button></div>
+  <div class="dlg-b">
+    <p class="hint" style="margin-top:0">Plak een lijst, één kaart per regel. Voorbeelden: <code>1 Sol Ring</code>, <code>2x Lightning Bolt</code> of <code>1 Sol Ring (CMM) 410</code>. Met setcode en nummer kies je meteen de exacte uitvoering. Of kies een <b>CSV-bestand</b>: de app herkent de kolommen zelf en laat je een voorbeeld zien voordat er iets wordt toegevoegd. Taal en conditie uit je bestand worden niet gebruikt; de app werkt altijd met de Engelse uitvoeringen.</p>
+    <label style="display:block;font-size:12px;color:var(--muted);margin:8px 0 4px">Deck voor deze kaarten (mag leeg)
+      <input id="imp-deck" list="deck-list" style="display:block;width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-size:16px" autocomplete="off">
+    </label>
+    <datalist id="deck-list"></datalist>
+    <div class="filerow"><button class="btn" id="imp-pick">CSV-bestand kiezen…</button><input type="file" id="imp-file" accept=".csv,.tsv,.txt,text/csv,text/plain" hidden><span class="hint" id="imp-fname"></span></div>
+    <div id="imp-map" hidden>
+      <label class="chk"><input type="checkbox" id="map-hdr" checked> Eerste rij is een kop</label>
+      <div class="maprow" id="map-grid"></div>
+      <div class="mapprev" id="map-prev" aria-live="polite"></div>
+      <div class="btnrow"><button class="btn primary" id="map-go">CSV importeren</button></div>
+    </div>
+    <div class="hint" style="margin:10px 0 4px">Of plak hier een lijst:</div>
+    <textarea class="io" id="imp-text" aria-label="Kaartenlijst" placeholder="1 Sol Ring&#10;1 Swords to Plowshares&#10;2x Lightning Bolt"></textarea>
+    <div class="btnrow"><button class="btn primary" id="imp-go">Toevoegen</button></div>
+    <div id="imp-res" class="hint" role="status"></div>
+  </div>
+</dialog>
+
+<dialog id="dlg-pick">
+  <div class="dlg-h"><h3 id="pick-title">Kies de uitvoering</h3><button class="btn ghost mini" id="pick-close">Sluiten</button></div>
+  <div class="dlg-b">
+    <p class="hint" style="margin-top:0" id="pick-hint">Tik de kaart aan die op jouw kaart lijkt: let op art, kader, setsymbool en foil. De prijs verschilt per uitvoering.</p>
+    <div class="pick-grid" id="pick-grid"></div>
+  </div>
+</dialog>
+
+<dialog id="dlg-card">
+  <div class="dlg-h"><h3 id="d-title">Kaart</h3><button class="btn ghost mini" id="d-close">Sluiten</button></div>
+  <div class="dlg-b">
+    <div class="detail">
+      <div class="bigimg"><img id="d-img" alt=""><div class="cap" id="d-cap"></div></div>
+      <div>
+        <p class="d-sub" id="d-sub"></p>
+        <div class="btnrow" style="margin:0 0 12px"><button class="btn primary" id="d-add">+ Wantlist</button><button class="btn" id="d-other">Andere uitvoering</button></div>
+        <div class="verdict" id="d-verdict"></div>
+        <div id="d-src"></div>
+        <p class="foot" id="d-foot"></p>
+      </div>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="dlg-scan">
+  <div class="dlg-h"><h3>Kaart scannen</h3><button class="btn ghost mini" id="scan-close">Sluiten</button></div>
+  <div class="dlg-b">
+    <div class="cam"><video id="cam" playsinline muted></video><div class="frame"><div class="band"></div></div></div>
+    <p class="hint">Leg de kaart in het kader zodat de naam in de groene balk valt en tik op Lees kaart.</p>
+    <div style="display:flex;gap:8px;margin-top:8px"><button class="btn primary" id="scan-go">Lees kaart</button></div>
+    <div class="scanres" id="scan-res"></div>
+  </div>
+</dialog>
+
+<dialog id="dlg-io">
+  <div class="dlg-h"><h3>Back-up en overzetten</h3><button class="btn ghost mini" id="io-close">Sluiten</button></div>
+  <div class="dlg-b">
+    <p class="hint" style="margin-top:0">De wantlist staat op dit toestel. Kopieer de tekst hieronder om hem op je andere toestel te plakken.</p>
+    <textarea class="io" id="io-text" aria-label="Wantlist-gegevens"></textarea>
+    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+      <button class="btn" id="io-copy">Kopieer</button>
+      <button class="btn primary" id="io-import">Importeer wat hier staat</button>
+    </div>
+  </div>
+</dialog>
+
+<script>
+'use strict';
+/* ---------- helpers ---------- */
+const $ = (id) => document.getElementById(id);
+const eur = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' });
+const pct = new Intl.NumberFormat('nl-NL', { maximumFractionDigits: 1, signDisplay: 'always' });
+const eurSigned = new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR', signDisplay: 'always' });
+const norm = (s) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+const IMG = 'https://cards.scryfall.io/';
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const num = (v) => { const n = parseFloat(String(v).replace(',', '.')); return Number.isFinite(n) ? n : null; };
+
+/* ---------- opslag: IndexedDB voor de kaartendatabase, localStorage voor wantlist ---------- */
+const DB = {
+  open() { return new Promise((res, rej) => { const r = indexedDB.open('wantlist-prijzen', 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); },
+  async get(k) { const db = await this.open(); return new Promise((res, rej) => { const q = db.transaction('kv').objectStore('kv').get(k); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); }); },
+  async set(k, v) { const db = await this.open(); return new Promise((res, rej) => { const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = res; t.onerror = () => rej(t.error); }); }
+};
+const store = {
+  load() { try { return JSON.parse(localStorage.getItem('wl') || '{}'); } catch { return {}; } },
+  save(s) { try { localStorage.setItem('wl', JSON.stringify(s)); } catch {} }
+};
+let state = Object.assign({ items: [], thr: 10, ship: 0, disc: 5, deck: '', sort: 'name' }, store.load());
+const NONE = '__none';
+const curDeck = () => (state.deck && state.deck !== NONE ? state.deck : undefined);
+const persist = () => store.save(state);
+
+/* ---------- kaartendata ---------- */
+let cards = [], byId = new Map(), byName = new Map(), byFace = new Map(), names = [], meta = { updated: null, synced: null };
+let setCodes = new Set();
+const bigImg = (c) => (c.i ? IMG + c.i.replace(/^small\//, 'normal/') : '');
+const smallImg = (c) => (c.i ? IMG + c.i : '');
+const urlCM = (c) => `https://www.cardmarket.com/en/Magic/Products?idProduct=${c.id}&language=1&minCondition=3`;
+const largeImg = (c) => (c.i ? IMG + c.i.replace(/^small\//, 'large/') : '');
+const urlSF = (c) => `https://scryfall.com/card/${c.s.toLowerCase()}/${encodeURIComponent(c.cn)}`;
+const RARITY = { c: 'common', u: 'uncommon', r: 'rare', m: 'mythic', s: 'special', b: 'bonus' };
+const ago = (iso) => { if (!iso) return 'onbekend'; const h = (Date.now() - new Date(iso).getTime()) / 3600e3; return h < 1 ? 'zojuist' : h < 24 ? `${Math.round(h)} uur geleden` : `${Math.round(h / 24)} dag(en) geleden`; };
+
+function indexCards(payload) {
+  cards = payload.cards; meta = { updated: payload.updated, synced: payload.synced };
+  byId = new Map(); byName = new Map();
+  for (const c of cards) {
+    byId.set(c.id, c);
+    const k = norm(c.n);
+    let g = byName.get(k);
+    if (!g) { g = { key: k, name: c.n, list: [] }; byName.set(k, g); }
+    g.list.push(c);
+  }
+  names = [...byName.values()];
+  byFace = new Map(); for (const g of names) if (g.name.includes(' // ')) byFace.set(norm(g.name.split(' // ')[0]), g);
+  setCodes = new Set(cards.map((c) => c.s));
+  bigramCache = null;
+}
+const price = (c) => (c.f ? (c.tf ?? null) : (c.t ?? null));   // alleen-foil kaarten: foil-prijs
+const avg30 = (c) => (c.f ? null : (c.a30 ?? null));
+const avg7 = (c) => (c.f ? null : (c.a7 ?? null));
+function cheapest(g) {
+  let best = null;
+  for (const c of g.list) { const p = price(c); if (p != null && p > 0 && (!best || p < price(best))) best = c; }
+  return best || g.list[0];
+}
+
+/* ---------- zoeken ---------- */
+let bigramCache = null;
+const grams = (s) => { const set = new Set(); const t = ' ' + s + ' '; for (let i = 0; i < t.length - 1; i++) set.add(t.slice(i, i + 2)); return set; };
+function search(qRaw, limit = 40) {
+  const q = norm(qRaw); if (q.length < 2) return [];
+  const toks = q.split(' ');
+  const hits = [];
+  for (const g of names) {
+    if (!toks.every((t) => g.key.includes(t))) continue;
+    let rank = 3;
+    if (g.key === q) rank = 0; else if (g.key.startsWith(q)) rank = 1; else if (g.key.split(' ').some((w) => w.startsWith(toks[0]))) rank = 2;
+    hits.push([rank, g]);
+  }
+  if (hits.length) return hits.sort((a, b) => a[0] - b[0] || a[1].key.length - b[1].key.length).slice(0, limit).map((h) => h[1]);
+  // vage match (typfouten / OCR-ruis): dice-coëfficiënt op lettergroepen
+  if (!bigramCache) bigramCache = names.map((g) => grams(g.key));
+  const qg = grams(q), out = [];
+  names.forEach((g, i) => {
+    const ng = bigramCache[i]; let inter = 0;
+    for (const x of qg) if (ng.has(x)) inter++;
+    const score = (2 * inter) / (qg.size + ng.size);
+    if (score > 0.45) out.push([score, g]);
+  });
+  return out.sort((a, b) => b[0] - a[0]).slice(0, 8).map((h) => h[1]);
+}
+
+/* ---------- berekeningen ---------- */
+function spark(a30, a7, now) {
+  const pts = [a30, a7, now].filter((v) => v != null);
+  if (pts.length < 2) return '';
+  const min = Math.min(...pts), max = Math.max(...pts), w = 64, h = 22, pad = 3;
+  const y = (v) => max === min ? h / 2 : pad + (1 - (v - min) / (max - min)) * (h - 2 * pad);
+  const xs = pts.length === 3 ? [pad, w / 2, w - pad] : [pad, w - pad];
+  const col = now <= a30 ? 'var(--down)' : 'var(--up)';
+  const d = pts.map((v, i) => `${i ? 'L' : 'M'}${xs[i].toFixed(1)} ${y(v).toFixed(1)}`).join(' ');
+  return `<svg class="spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img" aria-label="Prijsverloop 30 dagen naar nu"><path d="${d}" fill="none" stroke="${col}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="${xs[xs.length - 1]}" cy="${y(pts[pts.length - 1]).toFixed(1)}" r="2.6" fill="${col}"/></svg>`;
+}
+function resolve(item) {
+  const g = byName.get(norm(item.name));
+  let c = null;
+  if (item.id) c = byId.get(item.id);
+  if (!c && g) c = cheapest(g);
+  return c;
+}
+function evaluate(item) {
+  const c = resolve(item); if (!c) return null;
+  const p = price(c), a30 = avg30(c), a7 = avg7(c);
+  const ship = item.ship != null ? item.ship : (state.ship || 0);
+  const total = p != null ? p + ship : null;
+  const dEur = p != null && a30 != null ? p - a30 : null;
+  const dPct = dEur != null && a30 > 0 ? (dEur / a30) * 100 : null;
+  let sig = 'geen', why = 'Geen prijsgegevens';
+  if (p != null) {
+    if (item.max != null) { sig = total <= item.max ? 'ja' : 'nee'; why = `max. ${eur.format(item.max)} (incl. verzending)`; }
+    else if (dPct != null) { sig = -dPct >= state.thr ? 'ja' : 'nee'; why = `drempel ${state.thr}% onder 30 dagen`; }
+    else { sig = 'geen'; why = 'Geen 30-daggemiddelde om mee te vergelijken'; }
+  }
+  const koop = p != null ? (p + ship) * (1 - (state.disc ?? 5) / 100) : null;
+  return { c, p, a30, a7, ship, total, dEur, dPct, sig, why, koop };
+}
+
+/* ---------- weergave: zoekresultaten ---------- */
+function renderResults(list) {
+  const ul = $('results');
+  if (!list.length) { ul.innerHTML = ''; $('search-foot').textContent = $('q').value.trim().length >= 2 ? 'Niets gevonden. Probeer een deel van de naam.' : (cards.length ? 'Typ minstens twee letters.' : 'Synchroniseer eerst om de kaarten te laden.'); return; }
+  $('search-foot').textContent = 'Tik op een kaart om de uitvoering te kiezen.';
+  ul.innerHTML = list.map((g) => {
+    const c = cheapest(g), p = price(c), inWl = state.items.some((i) => norm(i.name) === g.key && !i.id);
+    return `<li><div class="row" data-open="${esc(g.key)}" role="button" tabindex="0" aria-label="${esc(g.name)}: kies uitvoering">
+      <img loading="lazy" alt="" src="${smallImg(c)}">
+      <div class="t"><b>${esc(g.name)}</b><span>${g.list.length} ${g.list.length === 1 ? 'uitvoering' : 'uitvoeringen'}</span></div>
+      <div class="p num">${p != null ? 'vanaf<br><b>' + eur.format(p) + '</b>' : '–'}</div>
+      <button class="btn mini" data-add="${esc(g.key)}" ${inWl ? 'disabled' : ''}>${inWl ? 'Op lijst' : '+ Lijst'}</button>
+    </div></li>`;
+  }).join('');
+}
+
+/* ---------- uitvoering kiezen ---------- */
+let pickCtx = null;
+function openPicker(g, hint, itemIndex = null) {
+  pickCtx = { g, hint, itemIndex };
+  const curId = itemIndex != null ? state.items[itemIndex]?.id : null;
+  $('pick-title').textContent = g.name;
+  const sorted = g.list.slice().sort((a, b) => (b.d || '').localeCompare(a.d || '') || a.cn.localeCompare(b.cn, undefined, { numeric: true }));
+  $('pick-hint').textContent = itemIndex != null ? 'Kies de uitvoering die je voor deze kaart wilt volgen. Groen omrand = nu gekozen. De prijs verschilt per uitvoering.' : hint && (hint.set || hint.num) ? `Gelezen: ${[hint.set, hint.num && '#' + hint.num].filter(Boolean).join(' ')}. Groen omrand = past erbij. Controleer art en setsymbool.` : 'Tik de kaart aan die op jouw kaart lijkt: let op art, kader, setsymbool en foil. De prijs verschilt per uitvoering.';
+  $('pick-grid').innerHTML = sorted.map((c) => {
+    const hit = itemIndex != null ? (curId ? c.id === curId : false) : !!(hint && ((hint.set && c.s.toLowerCase() === hint.set.toLowerCase()) || (hint.num && stripZeros(c.cn) === stripZeros(hint.num))) && (!hint.set || !hint.num || (c.s.toLowerCase() === hint.set.toLowerCase() && stripZeros(c.cn) === stripZeros(hint.num))));
+    const pr = price(c);
+    return `<button class="pick ${hit ? 'hit' : ''}" data-card="${c.id}" aria-label="${esc(c.sn)} nummer ${esc(c.cn)}">
+      <img loading="lazy" alt="" src="${smallImg(c)}">
+      <b>${esc(c.s)} #${esc(c.cn)}${c.f ? '<span class="badge">foil</span>' : ''}</b>
+      <span>${esc((c.d || '').slice(0, 4))} · ${pr != null ? eur.format(pr) : '–'}</span></button>`;
+  }).join('');
+  if (!$('dlg-pick').open) $('dlg-pick').showModal();
+  $('pick-grid').scrollTop = 0; $('dlg-pick').scrollTop = 0;
+}
+
+/* ---------- resultaat: alle bronnen op een rij ---------- */
+function openCard(id, fromPicker) {
+  const c = byId.get(id); if (!c) return;
+  if (!fromPicker) pickCtx = { g: byName.get(norm(c.n)), hint: null, itemIndex: null };
+  const fs = state.ship || 0, disc = (state.disc ?? 5) / 100;
+  $('d-title').textContent = c.n;
+  const img = $('d-img'); img.src = bigImg(c) || smallImg(c); img.alt = `${c.n}, ${c.sn} nummer ${c.cn}`;
+  $('d-cap').innerHTML = `Afbeelding: <a href="${urlSF(c)}" target="_blank" rel="noopener noreferrer">Scryfall ↗</a>`;
+  $('d-sub').textContent = `${c.sn} (${c.s}) · #${c.cn} · ${RARITY[c.r] || ''}${c.f ? ' · alleen foil' : ''}`;
+  const t = price(c), a7 = avg7(c), a30 = avg30(c);
+  const link = `<a class="slink" href="${urlCM(c)}" target="_blank" rel="noopener noreferrer">Bron openen: precies deze uitvoering op Cardmarket ↗</a>`;
+  const line = (label, sub, v) => `<div class="srow"><div class="slabel"><b>${label}</b><small>${sub}</small></div><div class="sprice num"></div><div class="stotal num"><b>${v != null ? eur.format(v) : '–'}</b></div></div>`;
+  $('d-src').innerHTML =
+    line('Cardmarket · Price Trend', 'alle condities en talen samen', t) +
+    line('Gemiddelde laatste 7 dagen', 'alle condities en talen samen', a7) +
+    line('Gemiddelde laatste 30 dagen', 'alle condities en talen samen', a30) +
+    `<div class="srow">${link}</div>`;
+
+  const v = $('d-verdict');
+  if (t != null) {
+    const total = t + fs;
+    v.className = 'verdict';
+    v.innerHTML = `<div class="big">Goede deal vanaf ≤ ${eur.format(total * (1 - disc))}</div>
+      <small>Cardmarket-trend ${eur.format(t)} + verzending ${eur.format(fs)} (jouw standaard) = ${eur.format(total)}. Beurskorting ${state.disc ?? 5}%.</small>
+      <small><b>Let op:</b> dit is de trend over alle condities, geen Near Mint- of Excellent-prijs. Een kaart in NM/EX kan duurder zijn. Tik hieronder op de bron om de echte aanbiedingen te zien.</small>`;
+  } else {
+    v.className = 'verdict none';
+    v.innerHTML = `<div class="big">Geen prijs gevonden</div><small>Voor deze uitvoering heeft Cardmarket geen prijs in de prijslijst.</small>`;
+  }
+  $('d-foot').innerHTML = `Prijzen van Cardmarket, bijgewerkt ${meta.updated ? ago(meta.updated) : 'onbekend'}.`;
+  $('d-add').dataset.id = c.id;
+  const ix = pickCtx?.itemIndex;
+  if (ix != null && state.items[ix]) { const cur = state.items[ix].id === c.id; $('d-add').textContent = cur ? 'Dit is je gekozen uitvoering' : 'Gebruik deze uitvoering'; $('d-add').disabled = cur; }
+  else { const onList = state.items.some((i) => i.id === c.id); $('d-add').textContent = onList ? 'Op je lijst' : '+ Lijst'; $('d-add').disabled = onList; }
+  $('d-other').style.display = byName.get(norm(c.n))?.list.length > 1 ? '' : 'none';
+  if ($('dlg-pick').open) $('dlg-pick').close();
+  if (!$('dlg-card').open) $('dlg-card').showModal();
+  $('dlg-card').scrollTop = 0;
+}
+
+/* ---------- weergave: alle kaarten ---------- */
+function deckList() { return [...new Set(state.items.map((i) => i.deck).filter(Boolean))].sort((x, y) => x.localeCompare(y)); }
+function renderDeckUI() {
+  const decks = deckList(), sel = $('ldeck');
+  const none = state.items.filter((i) => !i.deck).length;
+  sel.innerHTML = `<option value="">Alle decks (${state.items.length})</option>` + decks.map((d) => `<option value="${esc(d)}">${esc(d)} (${state.items.filter((i) => i.deck === d).length})</option>`).join('') + (decks.length && none ? `<option value="${NONE}">Zonder deck (${none})</option>` : '');
+  if (state.deck && ![...sel.options].some((o) => o.value === state.deck)) state.deck = '';
+  sel.value = state.deck || ''; sel.style.display = decks.length ? '' : 'none';
+  $('deck-list').innerHTML = decks.map((d) => `<option value="${esc(d)}">`).join('');
+}
+function renderWantlist() {
+  renderDeckUI();
+  $('lsort').value = state.sort || 'name';
+  const el = $('wl');
+  const all = state.items.map((it, idx) => ({ it, idx, e: evaluate(it) }));
+  updateBanner(all.filter((r) => r.e?.sig === 'ja'));
+  if (!all.length) { el.innerHTML = '<div class="empty">Nog geen kaarten. Tik op “Lijst importeren” om een decklijst of CSV in te voegen, of zoek een kaart en tik op “+ Lijst”.</div>'; $('lsum').textContent = ''; return; }
+  const q = norm($('lf').value || ''), dk = state.deck || '';
+  const rows = all.filter((r) => (!dk || (dk === NONE ? !r.it.deck : r.it.deck === dk)) && (!q || norm(r.it.name).includes(q)));
+  const byName_ = (a, b) => a.it.name.localeCompare(b.it.name);
+  const cmp = {
+    name: byName_,
+    ja: (a, b) => (b.e?.sig === 'ja') - (a.e?.sig === 'ja') || byName_(a, b),
+    drop: (a, b) => (a.e?.dPct ?? 999) - (b.e?.dPct ?? 999) || byName_(a, b),
+    price: (a, b) => (b.e?.p ?? -1) - (a.e?.p ?? -1) || byName_(a, b),
+    koop: (a, b) => (b.e?.koop ?? -1) - (a.e?.koop ?? -1) || byName_(a, b),
+    deck: (a, b) => (a.it.deck || '\uffff').localeCompare(b.it.deck || '\uffff') || byName_(a, b)
+  }[state.sort || 'name'] || byName_;
+  rows.sort(cmp);
+  const ja = rows.filter((r) => r.e?.sig === 'ja').length, stuks = rows.reduce((n, r) => n + (r.it.qty || 1), 0);
+  $('lsum').textContent = `${rows.length} ${rows.length === 1 ? 'kaart' : 'kaarten'}${stuks !== rows.length ? ` (${stuks} stuks)` : ''}${ja ? ` · ${ja}× JA` : ''}`;
+  if (!rows.length) { el.innerHTML = '<div class="empty">Geen kaarten die aan het filter voldoen.</div>'; return; }
+  el.innerHTML = `<table class="ls"><thead><tr><th>Kaart</th><th class="r">Prijs</th><th class="r">Koopadvies</th><th>Kopen?</th></tr></thead><tbody>` +
+    rows.map(({ it, idx, e }) => {
+      if (!e) return `<tr data-row="${idx}"><td class="c-name" colspan="4">${esc(it.name)} <span class="hint">(niet gevonden in de database)</span> <button class="rm" data-rm="${idx}" aria-label="Verwijder ${esc(it.name)}">×</button></td></tr>`;
+      const dir = e.dEur == null ? '' : (e.dEur <= 0 ? 'down' : 'up');
+      const chg = e.dEur == null ? '' : `<small class="${dir} num">${pct.format(e.dPct)}% · ${eurSigned.format(e.dEur)}</small>`;
+      return `<tr data-row="${idx}">
+        <td class="c-name"><div class="cn" data-hover="${e.c.id}">
+          <button class="th" data-zoom="${e.c.id}" aria-label="Vergroot ${esc(it.name)}"><img loading="lazy" alt="" src="${smallImg(e.c)}"></button>
+          <div class="nm"><b>${it.qty > 1 ? it.qty + '× ' : ''}${esc(it.name)}${it.deck ? `<span class="deck">${esc(it.deck)}</span>` : ''}</b><small>${esc(e.c.s)} #${esc(e.c.cn)}${it.id ? '' : ' · goedkoopste uitvoering'}</small></div>
+          <button class="rm" data-rm="${idx}" aria-label="Verwijder ${esc(it.name)}">×</button></div></td>
+        <td class="c-price r pc"><div class="pcw">${spark(e.a30, e.a7, e.p)}<div><span class="big num">${e.p != null ? eur.format(e.p) : '–'}</span>${chg}<a href="${urlCM(e.c)}" target="_blank" rel="noopener noreferrer">bron ↗</a></div></div></td>
+        <td class="c-koop r kc">${e.koop != null ? `<span class="big num">≤ ${eur.format(e.koop)}</span><small class="num">incl. ${eur.format(e.ship)} verzending</small>` : '–'}</td>
+        <td class="c-sig" title="${esc(e.why)}"><span class="sig ${e.sig}">${e.sig === 'ja' ? 'JA' : e.sig === 'nee' ? 'NEE' : '?'}</span><small class="why">${esc(e.why)}</small></td>
+      </tr>`;
+    }).join('') + '</tbody></table>';
+}
+function updateBanner(yes) {
+  const b = $('banner');
+  if (!yes.length) { b.classList.remove('show'); return; }
+  const uniq = [...new Set(yes.map((r) => r.it.name))];
+  b.textContent = uniq.length === 1 ? `${uniq[0]} staat onder je drempel` : `${uniq.length} kaarten staan onder je drempel: ${uniq.slice(0, 4).join(', ')}${uniq.length > 4 ? '…' : ''}`;
+  b.classList.add('show');
+}
+
+/* ---------- sync ---------- */
+function note(t, ms = 6000) { const m = $('msg'); m.textContent = t; m.classList.add('show'); clearTimeout(note.t); if (ms) note.t = setTimeout(() => m.classList.remove('show'), ms); }
+function setStatus() {
+  if (!meta.updated) { $('status').textContent = 'Nog niet gesynchroniseerd'; return; }
+  const d = new Date(meta.updated);
+  $('status').textContent = `${cards.length.toLocaleString('nl-NL')} kaarten · prijzen van ${d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+}
+async function sync(auto) {
+  const btn = $('btn-sync'); btn.disabled = true; btn.textContent = 'Bezig…';
+  try {
+    const r = await fetch('data/cards.json', { cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const payload = await r.json();
+    await DB.set('cards', payload);
+    indexCards(payload);
+    setStatus(); runSearch(); renderWantlist();
+    note(auto ? 'Prijzen automatisch bijgewerkt.' : 'Prijzen bijgewerkt.', 3500);
+  } catch (e) {
+    note(cards.length ? 'Synchroniseren lukt nu niet (geen verbinding?). Je ziet de laatst opgeslagen prijzen.' : 'Synchroniseren mislukt: ' + e.message + '. Open de app via de webadres (niet als los bestand).', 0);
+  } finally { btn.disabled = false; btn.textContent = 'Synchroniseer'; }
+}
+
+/* ---------- scan (camera + OCR) ---------- */
+const stripZeros = (x) => String(x ?? '').replace(/^0+(?=\d)/, '');
+function parseSetNum(text) {
+  const t = (text || '').toUpperCase().replace(/\|/g, 'I');
+  const num = (t.match(/\b0*(\d{1,4})\b(?:\s*\/\s*\d{1,4})?/) || [])[1] || null;
+  let set = null;
+  for (const w of t.match(/\b[A-Z][A-Z0-9]{2,4}\b/g) || []) { if (setCodes.has(w)) { set = w; break; } }
+  return { set, num };
+}
+let scanHint = null, scanGroup = null;
+
+let stream = null, tessLoading = null;
+function loadTesseract() {
+  if (window.Tesseract) return Promise.resolve();
+  return tessLoading || (tessLoading = new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js'; s.onload = res; s.onerror = () => rej(new Error('OCR-bibliotheek laden mislukt (internet nodig)')); document.head.appendChild(s); }));
+}
+async function openScan() {
+  $('scan-res').innerHTML = '';
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 } }, audio: false });
+    $('cam').srcObject = stream; await $('cam').play();
+    $('dlg-scan').showModal();
+    loadTesseract().catch(() => {});
+  } catch (e) { note('Camera niet beschikbaar: ' + e.message + '. De camera werkt alleen via https.', 0); }
+}
+function closeScan() { if (stream) stream.getTracks().forEach((t) => t.stop()); stream = null; $('dlg-scan').close(); }
+async function scanGo() {
+  const v = $('cam'), out = $('scan-res'); if (!v.videoWidth) return;
+  out.innerHTML = '<span class="hint">Lezen…</span>'; $('scan-go').disabled = true;
+  try {
+    await loadTesseract();
+    // het kader (63:88) staat gecentreerd op 86% van de hoogte; de naamstrook zit bovenin
+    const vh = v.videoHeight, vw = v.videoWidth;
+    // object-fit: cover kan de zijkanten wegsnijden; we rekenen terug naar videopixels
+    const box = v.getBoundingClientRect(), scale = Math.max(box.width / vw, box.height / vh);
+    const fh = box.height * 0.86, fw = fh * 63 / 88, fx = (box.width - fw) / 2, fy = (box.height - fh) / 2;
+    const toV = (x, y) => [(x + (vw * scale - box.width) / 2) / scale, (y + (vh * scale - box.height) / 2) / scale];
+    const [sx, sy] = toV(fx + fw * 0.04, fy + fh * 0.025), [ex, ey] = toV(fx + fw * 0.85, fy + fh * 0.12);
+    const cw = Math.max(10, ex - sx), ch = Math.max(10, ey - sy);
+    const cv = document.createElement('canvas'); cv.width = cw * 2; cv.height = ch * 2;
+    const ctx = cv.getContext('2d'); ctx.filter = 'grayscale(1) contrast(1.4)'; ctx.drawImage(v, sx, sy, cw, ch, 0, 0, cv.width, cv.height);
+    const { data } = await window.Tesseract.recognize(cv, 'eng');
+    const line = (data.text || '').split('\n').map((s) => s.trim()).filter((s) => s.length > 2).sort((a, b) => b.length - a.length)[0] || '';
+    const found = line ? search(line, 5) : [];
+    if (!found.length) { out.innerHTML = `<span class="hint">Niets herkend${line ? ' (“' + esc(line) + '”)' : ''}. Probeer meer licht of houd de kaart rechter.</span>`; return; }
+    // tweede leesronde: setcode en kaartnummer linksonder (moderne kaarten) voor de exacte uitvoering
+    scanHint = null;
+    try {
+      const [bx, by] = toV(fx + fw * 0.03, fy + fh * 0.925), [bx2, by2] = toV(fx + fw * 0.55, fy + fh * 0.985);
+      const c2 = document.createElement('canvas'); c2.width = Math.max(10, bx2 - bx) * 3; c2.height = Math.max(10, by2 - by) * 3;
+      const x2 = c2.getContext('2d'); x2.filter = 'grayscale(1) contrast(1.6)'; x2.drawImage(v, bx, by, bx2 - bx, by2 - by, 0, 0, c2.width, c2.height);
+      const r2 = await window.Tesseract.recognize(c2, 'eng');
+      scanHint = parseSetNum(r2.data.text);
+    } catch {}
+    scanGroup = found[0];
+    if (scanHint?.set && scanHint?.num) {
+      const exact = scanGroup.list.filter((c) => c.s === scanHint.set && stripZeros(c.cn) === stripZeros(scanHint.num));
+      if (exact.length === 1) { closeScan(); openCard(exact[0].id); return; }
+    }
+    out.innerHTML = `<span class="hint">Gelezen: “${esc(line)}”${scanHint?.set || scanHint?.num ? ` · ${esc([scanHint.set, scanHint.num && '#' + scanHint.num].filter(Boolean).join(' '))}` : ''}. Tik de juiste kaart aan, daarna kies je de uitvoering:</span>` + found.map((g) => `<button class="btn" data-pick="${esc(g.key)}">${esc(g.name)} <span class="num" style="color:var(--muted)">${price(cheapest(g)) != null ? '· vanaf ' + eur.format(price(cheapest(g))) : ''}</span></button>`).join('');
+  } catch (e) { out.innerHTML = `<span class="hint">Scannen mislukt: ${esc(e.message)}</span>`; }
+  finally { $('scan-go').disabled = false; }
+}
+
+/* ---------- events ---------- */
+let qTimer; const runSearch = () => renderResults(search($('q').value));
+$('q').addEventListener('input', () => { clearTimeout(qTimer); qTimer = setTimeout(runSearch, 120); });
+$('results').addEventListener('click', (e) => {
+  const add = e.target.closest('[data-add]');
+  if (add) { const g = byName.get(add.dataset.add); state.items.push({ name: g.name, ...(curDeck() ? { deck: curDeck() } : {}) }); persist(); runSearch(); renderWantlist(); note(`${g.name} staat op je lijst (goedkoopste uitvoering).`, 2500); return; }
+  const row = e.target.closest('[data-open]'); if (row) openPicker(byName.get(row.dataset.open));
+});
+$('results').addEventListener('keydown', (e) => { if (e.key === 'Enter') { const row = e.target.closest('[data-open]'); if (row) openPicker(byName.get(row.dataset.open)); } });
+$('pick-grid').addEventListener('click', (e) => { const b = e.target.closest('[data-card]'); if (b) openCard(+b.dataset.card, true); });
+$('pick-close').addEventListener('click', () => $('dlg-pick').close());
+$('d-close').addEventListener('click', () => $('dlg-card').close());
+$('d-other').addEventListener('click', () => { const c = byId.get(+$('d-add').dataset.id); const ix = pickCtx?.itemIndex ?? null, h = pickCtx?.hint; $('dlg-card').close(); if (c) openPicker(byName.get(norm(c.n)), h, ix); });
+$('d-add').addEventListener('click', () => {
+  const c = byId.get(+$('d-add').dataset.id); if (!c) return;
+  const ix = pickCtx?.itemIndex;
+  if (ix != null && state.items[ix]) { state.items[ix].id = c.id; state.items[ix].name = c.n; persist(); renderWantlist(); $('d-add').textContent = 'Dit is je gekozen uitvoering'; $('d-add').disabled = true; note(`Uitvoering gekozen: ${c.sn} #${c.cn}`, 2500); return; }
+  if (state.items.some((i) => i.id === c.id)) return;
+  state.items.push({ name: c.n, id: c.id, ...(curDeck() ? { deck: curDeck() } : {}) }); persist(); renderWantlist(); runSearch(); $('d-add').textContent = 'Op je lijst'; $('d-add').disabled = true;
+});
+$('d-img').style.cursor = 'zoom-in';
+$('d-img').addEventListener('click', () => openZoom(+$('d-add').dataset.id));
+/* lijst: klikken, hover, vergroten */
+$('wl').addEventListener('click', (e) => {
+  if (e.target.closest('a')) return;
+  const z = e.target.closest('[data-zoom]'); if (z) { openZoom(+z.dataset.zoom); return; }
+  const rm = e.target.closest('[data-rm]');
+  if (rm) { const i = +rm.dataset.rm, it = state.items[i]; if (it && confirm(`“${it.name}” van de lijst halen?`)) { state.items.splice(i, 1); persist(); runSearch(); renderWantlist(); } return; }
+  const tr = e.target.closest('tr[data-row]');
+  if (tr) { const i = +tr.dataset.row, it = state.items[i], g = it && byName.get(norm(it.name)); if (g) openPicker(g, null, i); }
+});
+$('btn-clear').addEventListener('click', () => { if (confirm('Hele lijst leegmaken?')) { state.items = []; state.deck = ''; persist(); runSearch(); renderWantlist(); } });
+let popT = null, popId = null; const canHover = matchMedia('(hover:hover) and (pointer:fine)');
+function showPop(id, x, y) {
+  const c = byId.get(id); if (!c) return; clearTimeout(popT); popId = id;
+  const img = $('pop-img'); img.src = bigImg(c) || smallImg(c); img.dataset.id = id; img.alt = c.n;
+  const pop = $('pop'); pop.classList.add('show');
+  const w = pop.offsetWidth || 270, h = pop.offsetHeight || 390;
+  let left = x + 28; if (left + w > innerWidth - 8) left = x - w - 28;
+  pop.style.left = Math.max(8, left) + 'px'; pop.style.top = Math.max(8, Math.min(innerHeight - h - 8, y - h / 3)) + 'px';
+}
+function hidePop() { clearTimeout(popT); popT = setTimeout(() => { $('pop').classList.remove('show'); popId = null; }, 220); }
+$('wl').addEventListener('mouseover', (e) => { if (!canHover.matches) return; const n = e.target.closest('[data-hover]'); if (!n) return; const id = +n.dataset.hover; if (popId === id && $('pop').classList.contains('show')) clearTimeout(popT); else showPop(id, e.clientX, e.clientY); });
+$('wl').addEventListener('mouseout', (e) => { if (e.target.closest('[data-hover]') && !e.relatedTarget?.closest?.('[data-hover]')) hidePop(); });
+$('pop').addEventListener('mouseenter', () => clearTimeout(popT));
+$('pop').addEventListener('mouseleave', hidePop);
+$('pop-img').addEventListener('click', () => { const id = +$('pop-img').dataset.id; $('pop').classList.remove('show'); popId = null; openZoom(id); });
+function openZoom(id) {
+  const c = byId.get(id); if (!c) return;
+  const img = $('z-img'); img.onerror = () => { img.onerror = null; img.src = bigImg(c); };
+  img.src = largeImg(c) || bigImg(c); img.alt = `${c.n}, ${c.sn} nummer ${c.cn}`;
+  $('z-cap').textContent = `${c.n} · ${c.sn} #${c.cn}`; $('z-link').href = urlSF(c);
+  if (!$('dlg-zoom').open) $('dlg-zoom').showModal();
+}
+$('z-close').addEventListener('click', () => $('dlg-zoom').close());
+$('dlg-zoom').addEventListener('click', (e) => { if (e.target.id === 'dlg-zoom' || e.target.id === 'z-img') $('dlg-zoom').close(); });
+let lfT; $('lf').addEventListener('input', () => { clearTimeout(lfT); lfT = setTimeout(renderWantlist, 120); });
+$('ldeck').addEventListener('change', (e) => { state.deck = e.target.value; persist(); renderWantlist(); });
+$('lsort').addEventListener('change', (e) => { state.sort = e.target.value; persist(); renderWantlist(); });
+
+/* lijst plakken */
+function pushItem({ name, id, qty = 1, deck }) {
+  const ex = state.items.find((i) => norm(i.name) === norm(name) && (i.deck || '') === (deck || '') && (i.id || null) === (id || null));
+  if (ex) ex.qty = (ex.qty || 1) + qty;
+  else state.items.push({ name, ...(id ? { id } : {}), ...(deck ? { deck } : {}), ...(qty > 1 ? { qty } : {}) });
+}
+function parseList(text, deck) {
+  const added = [], missing = [];
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line || /^(#|\/\/)/.test(line) || /^(deck|sideboard|commander|companion|maybeboard|mainboard)\s*:?$/i.test(line)) continue;
+    const m = line.match(/^(?:(\d+)\s*x?\s+)?(.+?)(?:\s+\(([A-Za-z0-9]{2,6})\)(?:\s+([A-Za-z0-9★\-]+))?)?(?:\s+\*[A-Za-z]\*)?$/);
+    if (!m) { missing.push(line); continue; }
+    const qty = m[1] ? +m[1] : 1; let name = m[2].trim(); const set = m[3]?.toUpperCase(), cn = m[4];
+    let g = byName.get(norm(name)) || byFace.get(norm(name));
+    if (!g) { const nm2 = name.replace(/\s*\([^)]*\)\s*$/, ''); g = byName.get(norm(nm2)) || byFace.get(norm(nm2)); }
+    if (!g) { missing.push(line); continue; }
+    let id;
+    if (set) { const hit = g.list.filter((c) => c.s === set && (!cn || stripZeros(c.cn) === stripZeros(cn))); if (hit.length === 1) id = hit[0].id; }
+    pushItem({ name: g.name, id, qty, deck });
+    added.push(g.name);
+  }
+  return { added, missing };
+}
+
+/* ---------- CSV-import ---------- */
+const CSV_FIELDS = [
+  ['name', 'Kaartnaam *', ['name', 'cardname', 'card', 'naam', 'kaart', 'kaartnaam', 'englishname', 'productname']],
+  ['qty', 'Aantal', ['count', 'quantity', 'qty', 'amount', 'aantal', 'wanted', 'want']],
+  ['set', 'Set (code of naam)', ['setcode', 'editioncode', 'set', 'edition', 'expansion', 'setname', 'editionname', 'expansionname', 'uitbreiding']],
+  ['cn', 'Kaartnummer', ['collectornumber', 'cardnumber', 'number', 'collector', 'nr', 'no', 'cn']],
+  ['id', 'Cardmarket-ID', ['mkmid', 'cardmarketid', 'idproduct', 'productid', 'mkm', 'mcmid', 'cardmarket']],
+  ['deck', 'Deck / lijst', ['deck', 'decks', 'list', 'wantslist', 'wantlist', 'wishlist', 'lijst', 'binder']]
+];
+let csv = null;
+const hkey = (x) => String(x || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+function parseCSV(text) {
+  text = text.replace(/^\uFEFF/, '');
+  const first = text.split(/\r?\n/, 1)[0] || '';
+  const delim = [',', ';', '\t'].map((d) => [d, first.split(d).length]).sort((a, b) => b[1] - a[1])[0][0];
+  const rows = []; let row = [], cur = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (q) { if (ch === '"') { if (text[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += ch; }
+    else if (ch === '"') q = true;
+    else if (ch === delim) { row.push(cur); cur = ''; }
+    else if (ch === '\n' || ch === '\r') { if (ch === '\r' && text[i + 1] === '\n') i++; row.push(cur); cur = ''; if (row.some((c) => c.trim() !== '')) rows.push(row); row = []; }
+    else cur += ch;
+  }
+  row.push(cur); if (row.some((c) => c.trim() !== '')) rows.push(row);
+  return rows;
+}
+function detectMap(rows, hasHeader) {
+  const ncol = Math.max(...rows.slice(0, 50).map((r) => r.length));
+  const map = Object.fromEntries(CSV_FIELDS.map(([k]) => [k, -1])); const used = new Set();
+  if (hasHeader) {
+    const hk = rows[0].map(hkey);
+    for (const [k, , aliases] of CSV_FIELDS) for (const a of aliases) { const i = hk.findIndex((h, ix) => h === a && !used.has(ix)); if (i >= 0) { map[k] = i; used.add(i); break; } }
+  } else {
+    const sample = rows.slice(0, 25); let best = -1, bestN = 0;
+    for (let c = 0; c < ncol; c++) { const n = sample.filter((r) => { const v = (r[c] || '').trim(); return v && (byName.has(norm(v)) || byFace.has(norm(v))); }).length; if (n > bestN) { bestN = n; best = c; } }
+    if (best >= 0) { map.name = best; used.add(best); }
+    for (let c = 0; c < ncol; c++) if (!used.has(c) && sample.every((r) => /^\d{1,3}$/.test((r[c] || '').trim()))) { map.qty = c; break; }
+  }
+  return map;
+}
+function resolveRow(cells, map, deckDefault) {
+  const get = (k) => (map[k] >= 0 ? String(cells[map[k]] ?? '').trim() : '');
+  const qty = Math.max(1, parseInt(get('qty'), 10) || 1), deck = get('deck') || deckDefault || '';
+  const idv = parseInt(get('id'), 10);
+  if (idv && byId.has(idv)) { const c = byId.get(idv); return { name: c.n, id: c.id, qty, deck, label: `${c.s} #${c.cn}` }; }
+  const raw = get('name'); if (!raw) return { skip: true };
+  let g = byName.get(norm(raw)) || byFace.get(norm(raw));
+  if (!g) { const n2 = raw.replace(/\s*\([^)]*\)\s*$/, ''); g = byName.get(norm(n2)) || byFace.get(norm(n2)); }
+  if (!g) return { fail: raw, qty };
+  const setv = get('set'), cn = get('cn'); let cand = g.list, label = 'goedkoopste uitvoering', id;
+  if (setv) { const up = setv.toUpperCase(), a = cand.filter((x) => x.s === up); cand = a.length ? a : cand.filter((x) => norm(x.sn) === norm(setv));
+    if (!cand.length) { const nv = norm(setv); cand = g.list.filter((x) => nv.length > 3 && (norm(x.sn).includes(nv) || nv.includes(norm(x.sn)))); } }
+  if (cn && cand.length) { const b = cand.filter((x) => stripZeros(x.cn) === stripZeros(cn)); if (b.length) cand = b; }
+  if ((setv || cn) && cand.length && cand.length < g.list.length) { const c = cand.length === 1 ? cand[0] : cheapest({ list: cand }); id = c.id; label = `${c.s} #${c.cn}${cand.length > 1 ? ' (goedkoopste in deze set)' : ''}`; }
+  else if (setv || cn) label = 'set/nummer niet gevonden: goedkoopste uitvoering';
+  return { name: g.name, id, qty, deck, label };
+}
+function csvRows() { return csv.rows.slice(csv.hasHeader ? 1 : 0); }
+function renderMap() {
+  const ncol = Math.max(...csv.rows.slice(0, 50).map((r) => r.length));
+  const cols = Array.from({ length: ncol }, (_, i) => (csv.hasHeader && (csv.rows[0][i] || '').trim()) ? `${csv.rows[0][i].trim()}` : `Kolom ${i + 1}`);
+  $('map-grid').innerHTML = CSV_FIELDS.map(([k, label]) => `<label for="map-${k}">${label}</label><select id="map-${k}" data-f="${k}"><option value="-1">— geen —</option>${cols.map((c, i) => `<option value="${i}" ${csv.map[k] === i ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select>`).join('');
+  renderPrev();
+}
+function renderPrev() {
+  const rows = csvRows(), deckDef = $('imp-deck').value.trim();
+  if (csv.map.name < 0 && csv.map.id < 0) { $('map-prev').innerHTML = '<div class="bad">Kies eerst welke kolom de kaartnaam bevat.</div>'; $('map-go').disabled = true; return; }
+  const res = rows.map((r) => resolveRow(r, csv.map, deckDef)).filter((x) => !x.skip);
+  const ok = res.filter((x) => !x.fail).length, bad = res.filter((x) => x.fail).length;
+  $('map-go').disabled = !ok;
+  $('map-prev').innerHTML = `<div><b>${rows.length} rijen</b>: ${ok} herkend${bad ? `, <span class="bad">${bad} niet gevonden</span>` : ''}. Voorbeeld:</div>` +
+    res.slice(0, 5).map((x) => x.fail ? `<div class="bad">✗ ${esc(x.fail)}</div>` : `<div class="ok">✓ ${x.qty > 1 ? x.qty + '× ' : ''}${esc(x.name)} <span style="color:var(--muted)">· ${esc(x.label)}${x.deck ? ' · ' + esc(x.deck) : ''}</span></div>`).join('');
+}
+async function loadCsvFile(file) {
+  if (!cards.length) { $('imp-res').textContent = 'Synchroniseer eerst, dan zijn de kaarten geladen.'; return; }
+  const buf = await file.arrayBuffer();
+  let text = new TextDecoder('utf-8').decode(buf);
+  if (text.includes('\uFFFD')) text = new TextDecoder('windows-1252').decode(buf);
+  const rows = parseCSV(text);
+  $('imp-fname').textContent = `${file.name} · ${rows.length} regels`;
+  if (rows.length < 1) { $('imp-res').textContent = 'Het bestand lijkt leeg.'; return; }
+  let hasHeader = true, map = detectMap(rows, true);
+  if (map.name < 0 && map.id < 0) { hasHeader = false; map = detectMap(rows, false); }
+  csv = { rows, hasHeader, map }; $('map-hdr').checked = hasHeader; $('imp-map').hidden = false; $('imp-res').textContent = '';
+  renderMap();
+}
+$('imp-pick').addEventListener('click', () => $('imp-file').click());
+$('imp-file').addEventListener('change', (e) => { const f = e.target.files[0]; if (f) loadCsvFile(f); e.target.value = ''; });
+$('map-hdr').addEventListener('change', (e) => { csv.hasHeader = e.target.checked; csv.map = detectMap(csv.rows, csv.hasHeader); renderMap(); });
+$('map-grid').addEventListener('change', (e) => { const k = e.target.dataset.f; if (!k) return; csv.map[k] = +e.target.value; renderPrev(); });
+$('imp-deck').addEventListener('input', () => { if (csv && !$('imp-map').hidden) renderPrev(); });
+$('map-go').addEventListener('click', () => {
+  const deckDef = $('imp-deck').value.trim(), res = csvRows().map((r) => resolveRow(r, csv.map, deckDef)).filter((x) => !x.skip);
+  let n = 0; const fails = [];
+  for (const x of res) { if (x.fail) { fails.push(`${x.qty > 1 ? x.qty + ' ' : '1 '}${x.fail}`); continue; } pushItem(x); n++; }
+  persist(); runSearch(); renderWantlist();
+  $('imp-map').hidden = true; csv = null; $('imp-fname').textContent = '';
+  $('imp-res').innerHTML = `${n} kaarten toegevoegd${deckDef ? ` (deck “${esc(deckDef)}” waar het bestand geen deck noemt)` : ''}.` + (fails.length ? `<br><b>Niet gevonden (${fails.length}), hieronder laten staan om te corrigeren:</b> ${fails.map(esc).join(' · ')}` : '');
+  $('imp-text').value = fails.join('\n');
+});
+$('btn-import').addEventListener('click', () => { $('imp-deck').value = curDeck() || ''; $('imp-res').textContent = ''; $('imp-map').hidden = true; csv = null; $('imp-fname').textContent = ''; $('dlg-imp').showModal(); $('imp-text').focus(); });
+$('imp-close').addEventListener('click', () => $('dlg-imp').close());
+$('imp-go').addEventListener('click', () => {
+  if (!cards.length) { $('imp-res').textContent = 'Synchroniseer eerst, dan zijn de kaarten geladen.'; return; }
+  const deck = $('imp-deck').value.trim(), r = parseList($('imp-text').value, deck);
+  persist(); runSearch(); renderWantlist();
+  $('imp-res').innerHTML = `${r.added.length} toegevoegd${deck ? ` aan “${esc(deck)}”` : ''}.` + (r.missing.length ? `<br><b>Niet gevonden (${r.missing.length}), hieronder laten staan om te corrigeren:</b> ${r.missing.map(esc).join(' · ')}` : '');
+  $('imp-text').value = r.missing.join('\n');
+});
+$('set-thr').addEventListener('change', (e) => { state.thr = Math.max(0, num(e.target.value) ?? 10); persist(); renderWantlist(); });
+$('set-disc').addEventListener('change', (e) => { state.disc = Math.min(50, Math.max(0, num(e.target.value) ?? 5)); persist(); });
+$('set-ship').addEventListener('change', (e) => { state.ship = Math.max(0, num(e.target.value) ?? 0); persist(); renderWantlist(); });
+$('btn-sync').addEventListener('click', () => sync(false));
+$('btn-scan').addEventListener('click', openScan);
+$('scan-close').addEventListener('click', closeScan);
+$('dlg-scan').addEventListener('close', () => { if (stream) closeScan(); });
+$('scan-go').addEventListener('click', scanGo);
+$('scan-res').addEventListener('click', (e) => { const t = e.target.closest('[data-pick]'); if (!t) return; const g = byName.get(t.dataset.pick); closeScan(); $('q').value = g.name; setTab('search'); runSearch(); openPicker(g, scanHint); });
+$('btn-io').addEventListener('click', () => { $('io-text').value = JSON.stringify({ items: state.items, thr: state.thr, ship: state.ship, disc: state.disc }); $('dlg-io').showModal(); });
+$('io-close').addEventListener('click', () => $('dlg-io').close());
+$('io-copy').addEventListener('click', async () => { try { await navigator.clipboard.writeText($('io-text').value); note('Gekopieerd.', 2000); } catch { $('io-text').select(); } });
+$('io-import').addEventListener('click', () => {
+  try {
+    const d = JSON.parse($('io-text').value);
+    if (!Array.isArray(d.items)) throw new Error('geen wantlist');
+    state = Object.assign(state, { items: d.items, thr: d.thr ?? state.thr, ship: d.ship ?? state.ship, disc: d.disc ?? state.disc }); persist();
+    $('set-thr').value = state.thr; $('set-ship').value = state.ship; $('set-disc').value = state.disc; runSearch(); renderWantlist(); $('dlg-io').close(); note('Wantlist geïmporteerd.', 2500);
+  } catch (e) { note('Importeren mislukt: ' + e.message, 4000); }
+});
+function setTab(t) { document.body.dataset.tab = t; $('tab-wantlist').setAttribute('aria-selected', t === 'wantlist'); $('tab-search').setAttribute('aria-selected', t === 'search'); }
+$('tab-wantlist').addEventListener('click', () => setTab('wantlist'));
+$('tab-search').addEventListener('click', () => { setTab('search'); $('q').focus(); });
+
+/* ---------- start ---------- */
+(async function init() {
+  $('set-thr').value = state.thr; $('set-ship').value = state.ship; $('set-disc').value = state.disc ?? 5;
+  if (matchMedia('(min-width:900px)').matches) document.body.dataset.tab = 'wantlist';
+  renderWantlist(); renderResults([]);
+  try { const saved = await DB.get('cards'); if (saved) { indexCards(saved); setStatus(); runSearch(); renderWantlist(); } } catch {}
+  // één keer per dag automatisch bijwerken bij openen
+  const age = meta.synced ? Date.now() - new Date(meta.synced).getTime() : Infinity;
+  if (navigator.onLine && age > 20 * 3600e3) sync(true);
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
+})();
+</script>
+</body>
+</html>
