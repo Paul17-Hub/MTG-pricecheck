@@ -61,9 +61,16 @@ async function combosFor(deck) {
   if (!r.ok) throw new Error('Spellbook HTTP ' + r.status);
   const res = (await r.json()).results || {};
   const mv = new Map(main.map((c) => [front(c.n), c.mv]));
+  const clean = (t) => String(t || '').replace(/\s+/g, ' ').trim();
   return (res.included || []).map((c) => {
     const cards = c.uses.map((u) => u.card.name);
-    return { cards, makes: (c.produces || []).slice(0, 3).map((p) => p.feature.name), mana: cards.reduce((s, n) => s + (mv.get(n) || 0), 0), tag: c.bracketTag || null };
+    return {
+      id: c.id, cards, makes: (c.produces || []).slice(0, 4).map((p) => p.feature.name),
+      mana: cards.reduce((s, n) => s + (mv.get(n) || 0), 0), need: c.manaNeeded || '', mv: c.manaValueNeeded || 0, tag: c.bracketTag || null,
+      req: (c.requires || []).map((q) => q.template?.name || q.feature?.name).filter(Boolean),
+      pre: clean(c.notablePrerequisites).slice(0, 300), easy: clean(c.easyPrerequisites).slice(0, 200),
+      steps: String(c.description || '').split('\n').map(clean).filter(Boolean).slice(0, 10).map((x) => x.slice(0, 220)),
+    };
   }).sort((a, b) => a.cards.length - b.cards.length || a.mana - b.mana);
 }
 
