@@ -93,6 +93,11 @@ details.dblock[open]>summary{margin-bottom:10px}
 .mvb{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:6px;width:30px;height:28px;font-size:11px;padding:0;cursor:pointer}
 .blkbar{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px}
 .dbody{padding-top:2px}
+.cchk{display:flex;gap:8px;align-items:flex-start;cursor:pointer}
+.cchk input{width:18px;height:18px;margin:2px 0 0;accent-color:var(--accent);flex:none}
+.combo ol{margin:6px 0 6px 18px;padding:0;font-size:12px;color:var(--muted)}
+.combo details summary{cursor:pointer;color:var(--accent);font-size:12px;padding:2px 0}
+.combo a{font-size:12px}
 .rwhy{display:block;color:var(--muted);font-size:12px;font-weight:400}
 .rnote{font-size:13px;color:var(--muted);margin:0 0 8px}
 .dblock{border:1px solid var(--line);border-radius:10px;background:var(--bg);padding:12px;margin:0 0 12px}
@@ -556,7 +561,7 @@ const store = {
   load() { try { return JSON.parse(localStorage.getItem('wl') || '{}'); } catch { return {}; } },
   save(s) { try { localStorage.setItem('wl', JSON.stringify(s)); } catch {} }
 };
-let state = Object.assign({ items: [], lists: [], deckMeta: {}, deckSel: '', deckBlocks: { order: [], open: {} }, thr: 10, ship: 0, disc: 5, deck: '', sort: 'name' }, store.load());
+let state = Object.assign({ items: [], lists: [], deckMeta: {}, comboOv: {}, deckSel: '', deckBlocks: { order: [], open: {} }, thr: 10, ship: 0, disc: 5, deck: '', sort: 'name' }, store.load());
 const NONE = '__none';
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2) + Date.now());
 const sel = new Set(); let lastRows = [], anchor = null;
@@ -1126,16 +1131,20 @@ function deckCardDb(dc) {
 }
 const deckParts = (d) => { const main = d.cards.filter((c) => !c.bd); return { main, cmds: main.filter((c) => c.cmd), rest: main.filter((c) => !c.cmd), side: d.cards.filter((c) => c.bd === 'S'), maybe: d.cards.filter((c) => c.bd === 'M') }; };
 const qsum = (arr) => arr.reduce((n, c) => n + c.q, 0);
+const COMBO_TAG = { E: ['Exhibition', 'lus zonder winst'], C: ['Core', 'lus zonder winst'], O: ['Oddball', 'eigenaardig, weinig impact'], P: ['Powerful', 'sterk, maar traag'], S: ['Spicy', 'pittig, kan extra stukken nodig hebben'], R: ['Ruthless', 'snel en zwaar, bracket 4'] };
+const comboKey = (x) => [...x.cards].map((n) => norm(n)).sort().join(' + ');
+const comboDefault = (x) => x.cards.length === 2 && ['P', 'S', 'R'].includes(x.tag) && !(x.req && x.req.length) && !String(x.pre || '').trim();
+const comboCounts = (x) => { const ov = (state.comboOv || {})[comboKey(x)]; return ov === undefined ? comboDefault(x) : !!ov; };
 function bracketView(d) {
   const { main } = deckParts(d);
   const gc = main.filter((c) => c.gc), et = main.filter((c) => c.et), ml = main.filter((c) => c.ml), tu = main.filter((c) => c.tu);
-  const two = (d.combos || []).filter((x) => x.cards.length === 2);
+  const two = (d.combos || []).filter(comboCounts);
   let est;
   if (ml.length) est = ['Bracket 4 of hoger', 'mass land denial is in bracket 1 t/m 3 niet bedoeld'];
   else if (gc.length >= 4) est = ['Bracket 4 of hoger', `${gc.length} Game Changers: bracket 3 staat er maximaal 3 toe`];
   else if (gc.length) est = ['Minimaal bracket 3', `${gc.length} van maximaal 3 Game Changers${gc.length === 3 ? ': je zit op het plafond' : ''}`];
-  else if (two.length) est = ['Bracket 3 of hoger', 'er zijn tweekaartscombo\'s'];
-  else est = ['Past bij bracket 2 of hoger', 'geen Game Changers, mass land denial of tweekaartscombo\'s gevonden'];
+  else if (two.length) est = ['Bracket 3 of hoger', `${two.length} meetellende tweekaartscombo${two.length === 1 ? '' : '\'s'}`];
+  else est = ['Past bij bracket 2 of hoger', 'geen Game Changers, mass land denial of meetellende tweekaartscombo\'s gevonden'];
   return { gc, et, ml, tu, two, est };
 }
 function deckRefreshHint() {
@@ -1185,7 +1194,15 @@ function passDeckFilters(c, db, p) {
   if (deckF.pmax != null && !(p != null && p <= deckF.pmax)) return false;
   return true;
 }
-const comboHtml = (x) => `<div class="combo">${x.cards.map(esc).join(' + ')}<small>${esc(x.makes.join(', '))} · samen ${x.mana} mana${x.cards.length > 2 ? ' · ' + x.cards.length + ' kaarten' : ''}</small></div>`;
+const comboHtml = (x) => {
+  const t = COMBO_TAG[x.tag] || [x.tag || 'onbekend', ''], counts = comboCounts(x), key = comboKey(x);
+  const extra = [...(x.req || []).map((q) => 'een ' + q), ...(x.pre ? [x.pre] : [])];
+  return `<div class="combo"><label class="cchk"><input type="checkbox" data-cov="${esc(key)}" ${counts ? 'checked' : ''} aria-label="Telt mee voor het bracket"><span><b>${x.cards.map(esc).join(' + ')}</b></span></label>
+    <small><span class="pill ${counts ? 'warn' : ''}">${esc(t[0])}</span> ${esc(t[1])}${x.cards.length > 2 ? ' · ' + x.cards.length + ' kaarten' : ''} · ${x.mv ? x.mv + ' mana' : 'samen ' + x.mana + ' mana'}${counts ? ' · telt mee' : ' · telt niet mee'}</small>
+    ${extra.length ? `<small>Extra nodig: ${extra.map(esc).join('; ')}</small>` : ''}
+    <small>Spellbook noemt: ${esc((x.makes || []).join(', '))}. Controleer zelf of dat in de praktijk echt oneindig is.</small>
+    <details><summary>Stappen en link</summary>${(x.steps || []).length ? `<ol>${x.steps.map((st) => `<li>${esc(st)}</li>`).join('')}</ol>` : ''}${x.id ? `<a href="https://commanderspellbook.com/combo/${esc(x.id)}/" target="_blank" rel="noopener noreferrer">Bekijk op Commander Spellbook ↗</a>` : ''}</details></div>`;
+};
 async function refreshDecks() {
   try { const rr = await fetch('data/recs.json', { cache: 'no-store' }); if (rr.ok) { const rp = await rr.json(); await DB.set('recs', rp); indexRecs(rp); } } catch {}
   try { const rd = await fetch('data/decks.json', { cache: 'no-store' }); if (!rd.ok) { renderDecks(); return; } const dp = await rd.json(); await DB.set('decks', dp); indexDecks(dp); renderDecks(); } catch {}
@@ -1228,13 +1245,13 @@ function renderDecks() {
   </div>
 `;
   const defs = {
-    bracket: { t: 'Bracket-controle', open: false, sum: `<span class="vs">${esc(b.est[0])}</span><span class="pill ${b.gc.length > 3 ? 'warn' : b.gc.length === 0 ? 'ok' : ''}">Game Changers ${b.gc.length}/3</span>${d.combos ? `<span class="pill ${b.two.length ? '' : 'ok'}">Tweekaartscombo\'s ${b.two.length}</span>` : ''}`, html: `
+    bracket: { t: 'Bracket-controle', open: false, sum: `<span class="vs">${esc(b.est[0])}</span><span class="pill ${b.gc.length > 3 ? 'warn' : b.gc.length === 0 ? 'ok' : ''}">Game Changers ${b.gc.length}/3</span>${d.combos ? `<span class="pill ${b.two.length ? '' : 'ok'}">Meetellende combo\'s ${b.two.length}</span>` : ''}`, html: `
         <div class="verd">${esc(b.est[0])}</div>
         <div style="color:var(--muted);font-size:13px;margin-bottom:8px">${esc(b.est[1])}. Dit is een indicatie, geen officieel oordeel.</div>
-        <span class="pill ${b.gc.length > 3 ? 'warn' : b.gc.length === 0 ? 'ok' : ''}">Game Changers ${b.gc.length}/3</span><span class="pill ${b.ml.length ? 'warn' : 'ok'}">Mass land denial ${b.ml.length}</span><span class="pill">Extra beurten ${b.et.length}</span><span class="pill">Tutors ${b.tu.length}</span><span class="pill ${b.two.length ? '' : 'ok'}">Tweekaartscombo's ${d.combos ? b.two.length : '?'}</span>
+        <span class="pill ${b.gc.length > 3 ? 'warn' : b.gc.length === 0 ? 'ok' : ''}">Game Changers ${b.gc.length}/3</span><span class="pill ${b.ml.length ? 'warn' : 'ok'}">Mass land denial ${b.ml.length}</span><span class="pill">Extra beurten ${b.et.length}</span><span class="pill">Tutors ${b.tu.length}</span><span class="pill ${b.two.length ? '' : 'ok'}">Meetellende tweekaartscombo's ${d.combos ? b.two.length : '?'}</span>${d.combos ? `<span class="pill">Overige combo's ${d.combos.length - b.two.length}</span>` : ''}
         ${gcNames ? `<div style="font-size:13px;margin:4px 0">Game Changers: ${esc(gcNames)}</div>` : ''}
-        ${(d.combos || []).slice(0, 5).map(comboHtml).join('')}${(d.combos || []).length > 5 ? `<details><summary style="cursor:pointer;color:var(--accent);font-size:13px;padding:6px 0">Toon de overige ${d.combos.length - 5} combo's</summary>${d.combos.slice(5).map(comboHtml).join('')}</details>` : ''}
-        ${d.combos ? '<div style="font-size:12px;color:var(--muted);margin-top:6px">Combo\'s via Commander Spellbook. In bracket 3 zijn tweekaartscombo\'s alleen laat in het spel de bedoeling (vanaf ongeveer beurt 6).</div>' : '<div style="font-size:12px;color:var(--muted)">Combo\'s zijn voor dit deck niet opgehaald.</div>'}
+        ${(d.combos || []).filter(comboCounts).map(comboHtml).join('')}${(d.combos || []).some((x) => !comboCounts(x)) ? `<details><summary style="cursor:pointer;color:var(--accent);font-size:13px;padding:6px 0">Combo's die niet meetellen (${d.combos.filter((x) => !comboCounts(x)).length})</summary>${d.combos.filter((x) => !comboCounts(x)).map(comboHtml).join('')}</details>` : ''}
+        ${d.combos ? '<div style="font-size:12px;color:var(--muted);margin-top:6px">Combo\'s komen van Commander Spellbook, dat elke combo een label geeft. Standaard telt een combo mee als hij precies twee kaarten heeft, Spellbook hem Powerful, Spicy of Ruthless noemt en er geen extra kaarten of vereisten bij komen. Vink een combo zelf aan of uit: dat geldt voor al je decks. In bracket 3 zijn tweekaartscombo\'s alleen laat in het spel de bedoeling (vanaf ongeveer beurt 6).</div>' : '<div style="font-size:12px;color:var(--muted)">Combo\'s zijn voor dit deck niet opgehaald.</div>'}
       ` },
     opbouw: { t: 'Opbouw', open: true, sum: '', html: `        <div class="bars" aria-label="Mana curve">${curve.map((n, i) => `<div class="bar"><span>${n || ''}</span><i style="height:${Math.round((n / cmax) * 70)}px"></i><span>${i === 7 ? '7+' : i}</span></div>`).join('')}</div>
         <div>${cats.slice(0, 14).map(([k, n]) => `<span class="pill">${esc(k)} ${n}</span>`).join('') || '<span class="hint">Geen eigen categorieën in Archidekt.</span>'}</div>
@@ -1287,7 +1304,7 @@ function deckSummary(d) {
   L.push(`Commander: ${cmds.map((c) => c.n).join(' + ') || 'onbekend'}${cmds[0]?.ci ? ' | kleuridentiteit ' + cmds.flatMap((c) => (c.ci || '').split('')).filter((x, i, a) => a.indexOf(x) === i).join('') : ''}`);
   L.push(`Bracket volgens Archidekt: ${d.bracket ?? 'niet ingesteld'} | indicatie van de app: ${b.est[0]} (${b.est[1]})`);
   L.push(`Game Changers (${b.gc.length}/3): ${b.gc.map((c) => c.n).join(', ') || 'geen'} | mass land denial: ${b.ml.length} | extra beurten: ${b.et.length} | tutors: ${b.tu.length}`);
-  if (d.combos) L.push(`Combo's: ${d.combos.map((x) => `${x.cards.join(' + ')} (${x.mana} mana)`).join('; ') || 'geen'}`);
+  if (d.combos) { const cnt = d.combos.filter(comboCounts); L.push(`Combo's die meetellen voor het bracket (Commander Spellbook-label Powerful/Spicy/Ruthless, twee kaarten, geen extra vereisten, of door mij aangevinkt): ${cnt.map((x) => `${x.cards.join(' + ')} [${(COMBO_TAG[x.tag] || [x.tag])[0]}]`).join('; ') || 'geen'}. Overige combo's (lussen zonder winst of met extra vereisten): ${d.combos.length - cnt.length}.`); }
   if (m.plan) L.push(`Plan van het deck: ${m.plan}`); if (m.budget) L.push(`Budget per kaart: ${m.budget}`);
   const cc = new Map(); for (const c of rest) for (const k of c.c || []) if (!GENERIC_CATS.has(k)) cc.set(k, (cc.get(k) || 0) + c.q);
   if (cc.size) L.push('Categorieën: ' + [...cc].sort((x, y) => y[1] - x[1]).map(([k, n]) => `${k} ${n}`).join(', '));
@@ -1315,6 +1332,8 @@ $('deck-body').addEventListener('input', (e) => {
 });
 $('deck-body').addEventListener('change', (e) => {
   const d = curDeckObj(); if (!d) return;
+  const cv = e.target.dataset && e.target.dataset.cov;
+  if (cv !== undefined) { const x = (d.combos || []).find((c) => comboKey(c) === cv); if (x) { state.comboOv = state.comboOv || {}; if (e.target.checked === comboDefault(x)) delete state.comboOv[cv]; else state.comboOv[cv] = e.target.checked; persist(); renderDecks(); } return; }
   if (e.target.id === 'dk-cat') { deckUI.cat = e.target.value; renderDeckCards(d); }
   else if (e.target.id === 'dk-board') { deckUI.board = e.target.value; renderDeckCards(d); }
 });
@@ -1523,14 +1542,14 @@ $('scan-close').addEventListener('click', closeScan);
 $('dlg-scan').addEventListener('close', () => { if (stream) closeScan(); });
 $('scan-go').addEventListener('click', scanGo);
 $('scan-res').addEventListener('click', (e) => { const t = e.target.closest('[data-pick]'); if (!t) return; const g = byName.get(t.dataset.pick); closeScan(); $('q').value = g.name; setTab('search'); runSearch(); openPicker(g, scanHint); });
-$('btn-io').addEventListener('click', () => { $('io-text').value = JSON.stringify({ items: state.items, lists: state.lists, deckMeta: state.deckMeta, deckBlocks: state.deckBlocks, thr: state.thr, ship: state.ship, disc: state.disc }); $('dlg-io').showModal(); });
+$('btn-io').addEventListener('click', () => { $('io-text').value = JSON.stringify({ items: state.items, lists: state.lists, deckMeta: state.deckMeta, deckBlocks: state.deckBlocks, comboOv: state.comboOv, thr: state.thr, ship: state.ship, disc: state.disc }); $('dlg-io').showModal(); });
 $('io-close').addEventListener('click', () => $('dlg-io').close());
 $('io-copy').addEventListener('click', async () => { try { await navigator.clipboard.writeText($('io-text').value); note('Gekopieerd.', 2000); } catch { $('io-text').select(); } });
 $('io-import').addEventListener('click', () => {
   try {
     const d = JSON.parse($('io-text').value);
     if (!Array.isArray(d.items)) throw new Error('geen wantlist');
-    state = Object.assign(state, { items: d.items, lists: d.lists || state.lists || [], deckMeta: d.deckMeta || state.deckMeta || {}, deckBlocks: d.deckBlocks || state.deckBlocks, thr: d.thr ?? state.thr, ship: d.ship ?? state.ship, disc: d.disc ?? state.disc }); persist();
+    state = Object.assign(state, { items: d.items, lists: d.lists || state.lists || [], deckMeta: d.deckMeta || state.deckMeta || {}, deckBlocks: d.deckBlocks || state.deckBlocks, comboOv: d.comboOv || state.comboOv || {}, thr: d.thr ?? state.thr, ship: d.ship ?? state.ship, disc: d.disc ?? state.disc }); persist();
     $('set-thr').value = state.thr; $('set-ship').value = state.ship; $('set-disc').value = state.disc; runSearch(); renderWantlist(); $('dlg-io').close(); note('Wantlist geïmporteerd.', 2500);
   } catch (e) { note('Importeren mislukt: ' + e.message, 4000); }
 });
