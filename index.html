@@ -93,8 +93,9 @@ details.dblock[open]>summary{margin-bottom:10px}
 .mvb{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:6px;width:30px;height:28px;font-size:11px;padding:0;cursor:pointer}
 .blkbar{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px}
 .dbody{padding-top:2px}
-.cchk{display:flex;gap:8px;align-items:flex-start;cursor:pointer}
-.cchk input{width:18px;height:18px;margin:2px 0 0;accent-color:var(--accent);flex:none}
+.cchk{display:flex;gap:8px;align-items:flex-start}
+.cchk input{width:18px;height:18px;margin:2px 0 0;accent-color:var(--accent);flex:none;cursor:pointer}
+.cname{border-bottom:1px dotted var(--muted);cursor:zoom-in}
 .combo ol{margin:6px 0 6px 18px;padding:0;font-size:12px;color:var(--muted)}
 .combo details summary{cursor:pointer;color:var(--accent);font-size:12px;padding:2px 0}
 .combo a{font-size:12px}
@@ -1166,7 +1167,7 @@ function recsHtml(d) {
   const inDeck = new Set(d.cards.filter((c) => !c.bd).map((c) => norm(c.n))), onMaybe = new Set(d.cards.filter((c) => c.bd).map((c) => norm(c.n)));
   const rows = L.cards.map((c, i) => {
     const e = evaluate({ name: c.n, ...(c.id ? { id: c.id } : {}) }), db = e?.c;
-    const tag = inDeck.has(norm(c.n)) ? ' <span class="pill">al in je deck</span>' : onMaybe.has(norm(c.n)) ? ' <span class="pill">staat op je maybeboard</span>' : '';
+    const tag = inDeck.has(norm(c.n)) ? (L.kind === 'art' ? ' <span class="pill">andere art van een kaart die je hebt</span>' : ' <span class="pill">al in je deck</span>') : onMaybe.has(norm(c.n)) ? ' <span class="pill">staat op je maybeboard</span>' : '';
     return `<tr data-name="${esc(c.n)}"><td><div class="nmq" ${db ? `data-hover="${db.id}"` : ''}>${db ? `<button class="th" data-zoom="${db.id}" aria-label="Vergroot ${esc(c.n)}"><img loading="lazy" alt="" src="${smallImg(db)}"></button>` : ''}<span><b>${esc(c.n)}</b>${tag}<span class="rwhy">${esc(c.why || '')}${db ? ` · ${esc(db.s)} #${esc(db.cn)}` : ''}</span></span></div></td><td class="r num">${e?.p != null ? eur.format(e.p) : '–'}</td><td class="r num hm">${e?.koop != null ? '≤ ' + eur.format(e.koop) : '–'}</td><td class="hm"><span class="sig ${e?.sig || 'geen'}">${e?.sig === 'ja' ? 'JA' : e?.sig === 'nee' ? 'NEE' : '?'}</span></td><td><button class="btn mini" data-radd="${i}">+ Lijst</button></td></tr>`;
   }).join('');
   return `<div id="recs-block">
@@ -1194,10 +1195,17 @@ function passDeckFilters(c, db, p) {
   if (deckF.pmax != null && !(p != null && p <= deckF.pmax)) return false;
   return true;
 }
+function nameId(n) {
+  const d = curDeckObj(), k = norm(n), dc = d && d.cards.find((c) => norm(c.n) === k || norm(c.n.split(' // ')[0]) === k);
+  let db = dc ? deckCardDb(dc) : null;
+  if (!db) { const g = byName.get(k) || byFace.get(k); if (g) db = cheapest(g); }
+  return db ? db.id : null;
+}
+const cardSpan = (n) => { const id = nameId(n); return id ? `<span class="cname" data-hover="${id}" data-zoom="${id}">${esc(n)}</span>` : esc(n); };
 const comboHtml = (x) => {
   const t = COMBO_TAG[x.tag] || [x.tag || 'onbekend', ''], counts = comboCounts(x), key = comboKey(x);
   const extra = [...(x.req || []).map((q) => 'een ' + q), ...(x.pre ? [x.pre] : [])];
-  return `<div class="combo"><label class="cchk"><input type="checkbox" data-cov="${esc(key)}" ${counts ? 'checked' : ''} aria-label="Telt mee voor het bracket"><span><b>${x.cards.map(esc).join(' + ')}</b></span></label>
+  return `<div class="combo"><div class="cchk"><input type="checkbox" data-cov="${esc(key)}" ${counts ? 'checked' : ''} aria-label="Telt mee voor het bracket"><span><b>${x.cards.map(cardSpan).join(' + ')}</b></span></div>
     <small><span class="pill ${counts ? 'warn' : ''}">${esc(t[0])}</span> ${esc(t[1])}${x.cards.length > 2 ? ' · ' + x.cards.length + ' kaarten' : ''} · ${x.mv ? x.mv + ' mana' : 'samen ' + x.mana + ' mana'}${counts ? ' · telt mee' : ' · telt niet mee'}</small>
     ${extra.length ? `<small>Extra nodig: ${extra.map(esc).join('; ')}</small>` : ''}
     <small>Spellbook noemt: ${esc((x.makes || []).join(', '))}. Controleer zelf of dat in de praktijk echt oneindig is.</small>
@@ -1249,7 +1257,7 @@ function renderDecks() {
         <div class="verd">${esc(b.est[0])}</div>
         <div style="color:var(--muted);font-size:13px;margin-bottom:8px">${esc(b.est[1])}. Dit is een indicatie, geen officieel oordeel.</div>
         <span class="pill ${b.gc.length > 3 ? 'warn' : b.gc.length === 0 ? 'ok' : ''}">Game Changers ${b.gc.length}/3</span><span class="pill ${b.ml.length ? 'warn' : 'ok'}">Mass land denial ${b.ml.length}</span><span class="pill">Extra beurten ${b.et.length}</span><span class="pill">Tutors ${b.tu.length}</span><span class="pill ${b.two.length ? '' : 'ok'}">Meetellende tweekaartscombo's ${d.combos ? b.two.length : '?'}</span>${d.combos ? `<span class="pill">Overige combo's ${d.combos.length - b.two.length}</span>` : ''}
-        ${gcNames ? `<div style="font-size:13px;margin:4px 0">Game Changers: ${esc(gcNames)}</div>` : ''}
+        ${gcNames ? `<div style="font-size:13px;margin:4px 0">Game Changers: ${b.gc.map((c) => cardSpan(c.n)).join(', ')}</div>` : ''}
         ${(d.combos || []).filter(comboCounts).map(comboHtml).join('')}${(d.combos || []).some((x) => !comboCounts(x)) ? `<details><summary style="cursor:pointer;color:var(--accent);font-size:13px;padding:6px 0">Combo's die niet meetellen (${d.combos.filter((x) => !comboCounts(x)).length})</summary>${d.combos.filter((x) => !comboCounts(x)).map(comboHtml).join('')}</details>` : ''}
         ${d.combos ? '<div style="font-size:12px;color:var(--muted);margin-top:6px">Combo\'s komen van Commander Spellbook, dat elke combo een label geeft. Standaard telt een combo mee als hij precies twee kaarten heeft, Spellbook hem Powerful, Spicy of Ruthless noemt en er geen extra kaarten of vereisten bij komen. Vink een combo zelf aan of uit: dat geldt voor al je decks. In bracket 3 zijn tweekaartscombo\'s alleen laat in het spel de bedoeling (vanaf ongeveer beurt 6).</div>' : '<div style="font-size:12px;color:var(--muted)">Combo\'s zijn voor dit deck niet opgehaald.</div>'}
       ` },
