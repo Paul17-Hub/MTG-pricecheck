@@ -204,75 +204,91 @@
 ]
 },
 {
-"name": "Nieuwe art en uitvoeringen",
-"note": "Nieuwe uitvoeringen van kaarten die je al hebt. Of de art mooi is, beoordeel je zelf: klik op het plaatje.",
+"name": "Passende art en uitvoeringen",
+"note": "Alleen art die bij dino's past: schilderachtige dino's, jungle en Ixalan, of het Jurassic World-park. Geen superhelden, cartoons, speelgoed of crossovers. Alle uitvoeringen hebben andere art dan wat je nu in het deck hebt. Of je de art mooi vindt, beoordeel je zelf: klik op het plaatje.",
 "cards": [
 {
-"n": "Curious Altisaur",
-"why": "Nieuwe uitvoering van een dino die je al speelt",
-"id": 910624
+"n": "Command Tower",
+"why": "Het park uit Jurassic World: het hek van het dinopark · Xabi Gaztelua",
+"id": 740990
 },
 {
-"n": "Ripjaw Raptor",
-"why": "Nieuwe uitvoering van een dino die je al speelt",
-"id": 910671
+"n": "Plains",
+"why": "Jurassic World: dinosaurussen in een weids dal · Véronique Meignaud",
+"id": 741071
+},
+{
+"n": "Forest",
+"why": "Dino's in een bos, schilderachtig · Alayna Danner",
+"id": 473524
+},
+{
+"n": "Forest",
+"why": "Klassieke jungle met waterval (Tony Roberts) · Tony Roberts",
+"id": 8344
+},
+{
+"n": "Forest",
+"why": "Ixalan: bergen en regenwoud · Dimitar Marinski",
+"id": 315471
+},
+{
+"n": "Gishath, Sun's Avatar",
+"why": "De klassieke Ixalan-art: Gishath voor zijn kudde · Zack Stella",
+"id": 301226
+},
+{
+"n": "Carnage Tyrant",
+"why": "Dino tegenover een jager (Kev Walker) · Kev Walker",
+"id": 733245
+},
+{
+"n": "Etali, Primal Storm",
+"why": "Onweer en een brullende dino (Raymond Swanland) · Raymond Swanland",
+"id": 795390
+},
+{
+"n": "Ghalta, Primal Hunger",
+"why": "Dino voor een verloren stad (Justin Gerard) · Justin Gerard",
+"id": 796552
+},
+{
+"n": "Raging Regisaur",
+"why": "Dino in de jungle · Bayard Wu",
+"id": 315453
+},
+{
+"n": "Agonasaur Rex",
+"why": "Dino bij zonsondergang · Lucas Graciano",
+"id": 807189
+},
+{
+"n": "Polyraptor",
+"why": "Raptor-kop boven water (Yeong-Hao Han) · Yeong-Hao Han",
+"id": 744187
+},
+{
+"n": "Regal Behemoth",
+"why": "Triceratops met tuig (Kev Walker) · Kev Walker",
+"id": 722041
+},
+{
+"n": "Hulking Raptor",
+"why": "Raptor in een oerwoud met ruïnes · Néstor Ossandón Leal",
+"id": 743392
 },
 {
 "n": "Thrashing Brontodon",
-"why": "Nieuwe uitvoering van een dino die je al speelt",
-"id": 910689
+"why": "Sauropode in het landschap · Randy Vargas",
+"id": 741008
 },
 {
-"n": "Rishkar's Expertise",
-"why": "Nieuwe uitvoering, standaard frame",
-"id": 910673
-},
-{
-"n": "Garruk's Uprising",
-"why": "Nieuwe uitvoering",
-"id": 910643
-},
-{
-"n": "Swords to Plowshares",
-"why": "Borderless Secret Lair",
-"id": 899752
-},
-{
-"n": "Earthquake",
-"why": "Borderless Secret Lair",
-"id": 889184
-},
-{
-"n": "Path to Exile",
-"why": "Inverted borderless fullart",
-"id": 891723
-},
-{
-"n": "Cultivate",
-"why": "Inverted borderless Secret Lair",
-"id": 898297
-},
-{
-"n": "Rogue's Passage",
-"why": "Inverted borderless Secret Lair",
-"id": 884804
-},
-{
-"n": "Sol Ring",
-"why": "Goedkoopste nieuwe uitvoering (Reality Fracture Commander)",
-"id": 909814
-},
-{
-"n": "Arcane Signet",
-"why": "Goedkoopste nieuwe uitvoering",
-"id": 909813
-},
-{
-"n": "Command Tower",
-"why": "Goedkoopste nieuwe uitvoering",
-"id": 909815
+"n": "Restless Ridgeline",
+"why": "Rotsrug in de vorm van een dino · David Frasheski",
+"id": 743054
 }
-]
+],
+"kind": "art"
 }
 ]
 }
