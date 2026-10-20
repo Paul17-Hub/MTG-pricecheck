@@ -568,7 +568,10 @@ const NONE = '__none';
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2) + Date.now());
 const sel = new Set(); let lastRows = [], anchor = null;
 const curDeck = () => (state.deck && state.deck !== NONE ? state.deck : undefined);
-const persist = () => store.save(state);
+// dubbel bewaren: localStorage + een reservekopie in IndexedDB, zodat lijsten terugkomen als de browser er één van leegmaakt
+let mirrorT = 0;
+const mirror = () => { clearTimeout(mirrorT); mirrorT = setTimeout(() => { try { DB.set('state', JSON.parse(JSON.stringify(state))).catch(() => {}); } catch {} }, 300); };
+const persist = () => { store.save(state); mirror(); };
 
 /* ---------- kaartendata ---------- */
 let cards = [], byId = new Map(), byName = new Map(), byFace = new Map(), bySetCn = new Map(), names = [], meta = { updated: null, synced: null };
@@ -1608,11 +1611,21 @@ $('btn-offline').addEventListener('click', () => cacheImages(false));
 
 /* ---------- start ---------- */
 (async function init() {
+  let restored = false;
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch {}
+  try {
+    if (!(state.items || []).length && !(state.lists || []).length) {
+      const bk = await DB.get('state');
+      if (bk && ((bk.items || []).length || (bk.lists || []).length)) { state = Object.assign(state, bk); store.save(state); restored = true; }
+    }
+  } catch {}
+  mirror();
   $('set-thr').value = state.thr; $('set-ship').value = state.ship; $('set-disc').value = state.disc ?? 5;
   if (matchMedia('(min-width:900px)').matches) document.body.dataset.tab = 'wantlist';
   renderWantlist(); renderResults([]);
   try { const saved = await DB.get('cards'); if (saved) { indexCards(saved); const sdk = await DB.get('decks'); if (sdk) indexDecks(sdk); const srk = await DB.get('recs'); if (srk) indexRecs(srk); setStatus(); runSearch(); renderWantlist(); } } catch {}
   renderDecks(); if (navigator.onLine) refreshDecks();
+  if (restored) note('Je lijsten waren door de browser gewist en zijn hersteld uit de reservekopie.', 10000);
   // één keer per dag automatisch bijwerken bij openen
   const age = meta.synced ? Date.now() - new Date(meta.synced).getTime() : Infinity;
   if (navigator.onLine && (age > 20 * 3600e3 || (cards.length && !hasMeta()))) sync(true);
