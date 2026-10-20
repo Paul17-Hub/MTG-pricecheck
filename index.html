@@ -327,6 +327,7 @@ dialog[open]{max-height:94dvh;overflow:auto}
 <header class="top">
   <h1>Wantlist prijzen</h1>
   <div class="status num" id="status">Nog niet gesynchroniseerd</div>
+  <button class="btn" id="btn-offline" title="Sla alle kaartplaatjes op zodat ze ook zonder internet werken">Offline</button>
   <button class="btn" id="btn-io">Back-up</button>
   <button class="btn primary" id="btn-sync">Synchroniseer</button>
 </header>
@@ -1566,6 +1567,45 @@ $('tab-wantlist').addEventListener('click', () => setTab('wantlist'));
 $('tab-decks').addEventListener('click', () => { setTab('decks'); renderDecks(); });
 $('tab-search').addEventListener('click', () => { setTab('search'); $('q').focus(); });
 
+/* ---------- plaatjes offline bewaren ---------- */
+const IMGCACHE = 'wl-img-v1';
+function offlineUrls() {
+  const set = new Set(), add = (c) => { if (c && c.i) { set.add(smallImg(c)); set.add(bigImg(c)); set.add(largeImg(c)); } };
+  for (const it of state.items) add(evaluate(it)?.c);
+  for (const d of deckData.decks) for (const dc of d.cards) add(deckCardDb(dc));
+  for (const k in recsData.decks) for (const L of recsData.decks[k].lists || []) for (const c of L.cards) add(evaluate({ name: c.n, ...(c.id ? { id: c.id } : {}) })?.c);
+  return [...set];
+}
+let offBusy = false;
+async function cacheImages(silent) {
+  if (offBusy) return;
+  if (!('caches' in window)) { if (!silent) note('Offline opslaan werkt niet in deze browser.'); return; }
+  offBusy = true; const btn = $('btn-offline');
+  try {
+    try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch {}
+    const cache = await caches.open(IMGCACHE), urls = offlineUrls(), todo = [];
+    for (const u of urls) if (!(await cache.match(u, { ignoreVary: true }))) todo.push(u);
+    if (!todo.length) { if (!silent) note(`Alle ${urls.length} plaatjes uit je lijsten en decks staan al offline klaar.`); state.offImgs = true; persist(); return; }
+    if (!navigator.onLine) { if (!silent) note('Je bent offline: plaatjes opslaan kan alleen met internet.'); return; }
+    let done = 0, fail = 0, i = 0;
+    const tick = () => { btn.textContent = `Offline ${done + fail}/${todo.length}`; };
+    const worker = async () => {
+      while (i < todo.length) {
+        const u = todo[i++];
+        try { const r = await fetch(u, { mode: 'cors' }); if (r.ok) { await cache.put(u, r); done++; } else fail++; }
+        catch { fail++; if (!navigator.onLine) i = todo.length; }
+        tick();
+      }
+    };
+    tick(); await Promise.all(Array.from({ length: 6 }, worker));
+    if (fail) note(`${done} plaatjes opgeslagen, ${fail} niet gelukt. Tik nog een keer op Offline om de rest te proberen.`, 10000);
+    else if (!silent) note(`Klaar: ${done} plaatjes staan nu offline klaar.`);
+    if (done) { state.offImgs = true; persist(); }
+  } catch { if (!silent) note('Offline opslaan is niet gelukt. Probeer het later nog eens.'); }
+  finally { offBusy = false; btn.textContent = 'Offline'; }
+}
+$('btn-offline').addEventListener('click', () => cacheImages(false));
+
 /* ---------- start ---------- */
 (async function init() {
   $('set-thr').value = state.thr; $('set-ship').value = state.ship; $('set-disc').value = state.disc ?? 5;
@@ -1577,6 +1617,8 @@ $('tab-search').addEventListener('click', () => { setTab('search'); $('q').focus
   const age = meta.synced ? Date.now() - new Date(meta.synced).getTime() : Infinity;
   if (navigator.onLine && (age > 20 * 3600e3 || (cards.length && !hasMeta()))) sync(true);
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
+  // heb je ooit op Offline getikt, dan vult de app nieuwe kaartplaatjes zelf aan zodra je online bent
+  if (state.offImgs && navigator.onLine) setTimeout(() => cacheImages(true), 4000);
 })();
 </script>
 </body>
