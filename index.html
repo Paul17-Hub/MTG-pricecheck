@@ -328,6 +328,7 @@ dialog[open]{max-height:94dvh;overflow:auto}
   <h1>Wantlist prijzen</h1>
   <div class="status num" id="status">Nog niet gesynchroniseerd</div>
   <button class="btn" id="btn-offline" title="Sla alle kaartplaatjes op zodat ze ook zonder internet werken">Offline</button>
+  <button class="btn" id="btn-link" title="Koppel je toestellen zodat je overal dezelfde lijsten ziet">Apparaten</button>
   <button class="btn" id="btn-io">Back-up</button>
   <button class="btn primary" id="btn-sync">Synchroniseer</button>
 </header>
@@ -541,6 +542,11 @@ dialog[open]{max-height:94dvh;overflow:auto}
   </div>
 </dialog>
 
+<dialog id="dlg-link">
+  <div class="dlg-h"><h3>Apparaten koppelen</h3><button class="btn ghost mini" id="lk-close">Sluiten</button></div>
+  <div class="dlg-b" id="lk-body"></div>
+</dialog>
+
 <script>
 'use strict';
 /* ---------- helpers ---------- */
@@ -571,7 +577,7 @@ const curDeck = () => (state.deck && state.deck !== NONE ? state.deck : undefine
 // dubbel bewaren: localStorage + een reservekopie in IndexedDB, zodat lijsten terugkomen als de browser er één van leegmaakt
 let mirrorT = 0;
 const mirror = () => { clearTimeout(mirrorT); mirrorT = setTimeout(() => { try { DB.set('state', JSON.parse(JSON.stringify(state))).catch(() => {}); } catch {} }, 300); };
-const persist = () => { store.save(state); mirror(); };
+const persist = () => { store.save(state); mirror(); scheduleSync(); };
 
 /* ---------- kaartendata ---------- */
 let cards = [], byId = new Map(), byName = new Map(), byFace = new Map(), bySetCn = new Map(), names = [], meta = { updated: null, synced: null };
@@ -1609,6 +1615,191 @@ async function cacheImages(silent) {
 }
 $('btn-offline').addEventListener('click', () => cacheImages(false));
 
+/* ---------- apparaten koppelen: synchronisatie via Supabase (code = sleutel) ---------- */
+const SB_URL = 'https://eywzfwhhourhznvzceep.supabase.co', SB_KEY = 'sb_publishable_EjmcpzGpJ8AMIL10M6nBMg_QqRW_fOI';
+const SYNC_DOCS = ['wantlist', 'prefs'], ALPHA = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+let sy = { code: '', hash: '', h: {}, t: {} }, syBusy = false, syAgain = false, syTimer = 0, syState = 'uit', syShow = false;
+const cyrb53 = (str, seed = 0) => { let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed; for (let i = 0, ch; i < str.length; i++) { ch = str.charCodeAt(i); h1 = Math.imul(h1 ^ ch, 2654435761); h2 = Math.imul(h2 ^ ch, 1597334677); } h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909); h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909); return 4294967296 * (2097151 & h2) + (h1 >>> 0); };
+const normCode = (s) => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+const fmtCode = (c) => (c.match(/.{1,5}/g) || []).join('-');
+const newCode = () => { const b = crypto.getRandomValues(new Uint8Array(25)); let s = ''; for (const x of b) s += ALPHA[x % 32]; return s; };
+const sha256 = async (s) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)))].map((x) => x.toString(16).padStart(2, '0')).join('');
+const codeHash = (c) => sha256('mtg-wantlist:' + c);
+function saveSy() { const o = { code: sy.code, h: sy.h, t: sy.t }; try { localStorage.setItem('wl-sync', JSON.stringify(o)); } catch {} DB.set('sync', o).catch(() => {}); }
+async function loadSy() {
+  let o = null; try { o = JSON.parse(localStorage.getItem('wl-sync') || 'null'); } catch {}
+  if (!o || !o.code) { try { o = await DB.get('sync'); } catch {} }
+  if (o && o.code) { sy.code = o.code; sy.h = o.h || {}; sy.t = o.t || {}; sy.hash = await codeHash(sy.code); }
+}
+async function sb(path, opt = {}) {
+  const { hash, headers, ...rest } = opt;
+  const r = await fetch(SB_URL + '/rest/v1/' + path, { ...rest, headers: { apikey: SB_KEY, 'x-sync-hash': hash || sy.hash, 'Content-Type': 'application/json', ...(headers || {}) } });
+  if (!r.ok) throw new Error('sb ' + r.status);
+  return r.status === 204 ? null : r.json();
+}
+const syPayload = (n) => (n === 'wantlist' ? { v: 1, items: state.items, lists: state.lists } : { v: 1, deckMeta: state.deckMeta, deckBlocks: state.deckBlocks, comboOv: state.comboOv, thr: state.thr, ship: state.ship, disc: state.disc });
+const syKey = (n) => cyrb53(JSON.stringify(syPayload(n))).toString(36);
+function syApply(n, d) {
+  if (n === 'wantlist') {
+    state.items = Array.isArray(d.items) ? d.items : []; state.lists = Array.isArray(d.lists) ? d.lists : [];
+    if (state.deck && state.deck !== NONE && !state.lists.includes(state.deck) && !state.items.some((i) => i.deck === state.deck)) state.deck = '';
+  } else {
+    for (const k of ['deckMeta', 'deckBlocks', 'comboOv']) if (d[k] && typeof d[k] === 'object') state[k] = d[k];
+    for (const k of ['thr', 'ship', 'disc']) if (typeof d[k] === 'number') state[k] = d[k];
+  }
+}
+function syMerge(n, loc, rem) {
+  if (n === 'wantlist') {
+    const key = (i) => norm(i.name || '') + '|' + (i.id || '') + '|' + (i.deck || '');
+    const out = [], seenU = new Set(), seenK = new Map();
+    for (const i of [...(rem.items || []), ...(loc.items || [])]) {
+      if (i.u && seenU.has(i.u)) continue;
+      const k = key(i);
+      if (seenK.has(k)) { const e = seenK.get(k); e.qty = Math.max(e.qty || 1, i.qty || 1); if (e.qty === 1) delete e.qty; continue; }
+      const c = { ...i }; out.push(c); seenK.set(k, c); if (c.u) seenU.add(c.u);
+    }
+    return { v: 1, items: out, lists: [...new Set([...(rem.lists || []), ...(loc.lists || [])])] };
+  }
+  return { v: 1, deckMeta: { ...loc.deckMeta, ...rem.deckMeta }, deckBlocks: rem.deckBlocks || loc.deckBlocks, comboOv: { ...loc.comboOv, ...rem.comboOv }, thr: rem.thr ?? loc.thr, ship: rem.ship ?? loc.ship, disc: rem.disc ?? loc.disc };
+}
+function syRender() {
+  sel.clear(); $('set-thr').value = state.thr; $('set-ship').value = state.ship; $('set-disc').value = state.disc ?? 5;
+  store.save(state); mirror(); runSearch(); renderWantlist(); renderDecks();
+}
+function setSyState(s) {
+  syState = s;
+  $('btn-link').textContent = 'Apparaten' + ({ ok: ' ✓', bezig: ' …', fout: ' !', offline: ' ⏸', uit: '' }[s] || '');
+  const el = $('lk-status'); if (el) el.textContent = syText();
+}
+const syText = () => ({ ok: 'Gekoppeld en bijgewerkt.', bezig: 'Bezig met synchroniseren…', fout: 'Synchroniseren is niet gelukt. De app probeert het straks opnieuw. Je gegevens op dit toestel zijn veilig.', offline: 'Je bent offline. Wijzigingen worden gesynchroniseerd zodra je weer internet hebt.', uit: '' }[syState] || '');
+async function syPush(n, data, prevTs) {
+  // schrijft alleen als niemand anders ertussendoor is geweest; anders null
+  const body = { data, updated_at: new Date().toISOString() };
+  if (prevTs) {
+    const r = await sb(`sync_docs?code_hash=eq.${sy.hash}&name=eq.${n}&updated_at=eq.${encodeURIComponent(prevTs)}`, { method: 'PATCH', headers: { Prefer: 'return=representation' }, body: JSON.stringify(body) });
+    return r[0] || null;
+  }
+  try { const r = await sb('sync_docs', { method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ code_hash: sy.hash, name: n, ...body }) }); return r[0]; }
+  catch (e) { if (String(e.message).endsWith('409')) return null; throw e; }
+}
+function scheduleSync() { if (!sy.code) return; clearTimeout(syTimer); syTimer = setTimeout(() => syncNow(false), 1500); }
+async function syncNow(manual) {
+  if (!sy.code) return;
+  if (syBusy) { syAgain = true; return; }
+  if (!navigator.onLine) { setSyState('offline'); return; }
+  syBusy = true; setSyState('bezig');
+  try {
+    let changed = false, merged = false;
+    for (let pass = 0, conflict = true; conflict && pass < 4; pass++) {
+    conflict = false;
+    const rows = await sb('sync_docs?select=name,data,updated_at');
+    if (rows.some((r) => r.name === '_moved')) {
+      sy.code = ''; sy.hash = ''; sy.h = {}; sy.t = {}; saveSy(); setSyState('uit'); renderLink();
+      note('Deze code is op een ander toestel vervangen. Voer de nieuwe code in via Apparaten.', 12000); return;
+    }
+    for (const n of SYNC_DOCS) {
+      const rem = rows.find((r) => r.name === n), chL = syKey(n) !== sy.h[n];
+      let data;
+      if (!rem) data = syPayload(n);
+      else {
+        const chR = rem.updated_at !== sy.t[n];
+        if (n === 'wantlist' && chL && !state.items.length && !state.lists.length && (rem.data.items || []).length) {
+          // dit toestel is leeg maar online staat een lijst: nooit stilletjes overschrijven
+          if (confirm(`Op dit toestel is je lijst leeg, maar online staan ${rem.data.items.length} kaarten.\n\nOK = de online lijst terugzetten.\nAnnuleren = ook online leegmaken.`)) { syApply(n, rem.data); sy.t[n] = rem.updated_at; sy.h[n] = syKey(n); changed = true; continue; }
+        }
+        if (chR && !chL) { syApply(n, rem.data); sy.t[n] = rem.updated_at; sy.h[n] = syKey(n); changed = true; continue; }
+        if (!chR && !chL) continue;
+        if (!chR && chL) data = syPayload(n);
+        else { data = syMerge(n, syPayload(n), rem.data); syApply(n, data); changed = true; merged = true; }
+      }
+      const k = syKey(n);
+      const res = await syPush(n, data, rem ? rem.updated_at : null);
+      if (!res) { conflict = true; break; }   // iemand was ons voor: opnieuw ophalen en samenvoegen
+      sy.t[n] = res.updated_at; sy.h[n] = k;
+    }
+    }
+    saveSy(); if (changed) syRender();
+    setSyState('ok');
+    if (merged) note('Wijzigingen van je andere toestel zijn samengevoegd met die van dit toestel.', 6000);
+    else if (manual) note('Alles is bijgewerkt.', 2500);
+  } catch (e) { setSyState(navigator.onLine ? 'fout' : 'offline'); if (manual) note('Synchroniseren is niet gelukt. Probeer het zo nog eens.', 5000); }
+  finally { syBusy = false; if (syAgain) { syAgain = false; setTimeout(() => syncNow(false), 300); } }
+}
+function renderLink() {
+  const b = $('lk-body'); if (!b) return;
+  if (!sy.code) {
+    b.innerHTML = `<p class="hint" style="margin-top:0">Koppel je toestellen, dan zie je op je pc en je telefoon dezelfde lijsten. Je hebt geen account nodig, alleen een geheime code.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" id="lk-new">Nieuwe code maken</button></div>
+      <hr style="border:0;border-top:1px solid var(--line);margin:14px 0">
+      <label for="lk-in" class="hint" style="display:block;margin:0 0 6px">Heb je al een code van een ander toestel? Vul hem hier in.</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><input id="lk-in" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXXX-XXXXX-XXXXX-XXXXX-XXXXX" style="flex:1;min-width:200px"><button class="btn" id="lk-join">Koppel</button></div>`;
+  } else {
+    b.innerHTML = `<p id="lk-status" class="hint" style="margin-top:0">${esc(syText())}</p>
+      <div class="hint" style="margin:0 0 4px">Jouw geheime code (deel hem met niemand):</div>
+      <div id="lk-code" class="num" style="font-size:14.5px;letter-spacing:0;padding:10px;border:1px solid var(--line);border-radius:8px;word-break:break-all">${syShow ? esc(fmtCode(sy.code)) : '•••••-•••••-•••••-•••••-•••••'}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button class="btn" id="lk-toggle">${syShow ? 'Verberg' : 'Toon'}</button><button class="btn" id="lk-copy">Kopieer code</button><button class="btn primary" id="lk-now">Nu synchroniseren</button></div>
+      <p class="hint">Op je andere toestel kies je Apparaten en vul je deze code in. Bewaar hem ook in je wachtwoordmanager: zonder code en zonder gekoppeld toestel kom je niet meer bij de online kopie.</p>
+      <details style="margin-top:6px"><summary style="cursor:pointer">Eerdere versies terugzetten</summary><div id="lk-hist" class="hint" style="margin-top:8px"></div></details>
+      <details style="margin-top:6px"><summary style="cursor:pointer">Meer opties</summary><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button class="btn" id="lk-rot">Nieuwe code (oude vervalt)</button><button class="btn" id="lk-off">Ontkoppel dit toestel</button></div><p class="hint">Ontkoppelen laat je lijsten op dit toestel staan. Een nieuwe code gebruik je als je denkt dat de code is uitgelekt.</p></details>`;
+  }
+}
+async function lkHistory() {
+  const el = $('lk-hist'); if (!el) return; el.textContent = 'Laden…';
+  try {
+    const rows = await sb('sync_history?select=id,saved_at,data&name=eq.wantlist&order=id.desc&limit=10');
+    if (!rows.length) { el.textContent = 'Er zijn nog geen eerdere versies.'; return; }
+    el.innerHTML = rows.map((r) => `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)"><span>${esc(new Date(r.saved_at).toLocaleString('nl-NL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }))} · ${(r.data.items || []).length} kaarten, ${(r.data.lists || []).length} lijsten</span><button class="btn mini" data-hid="${r.id}">Zet terug</button></div>`).join('');
+    el._rows = rows;
+  } catch { el.textContent = 'Kon de eerdere versies niet ophalen.'; }
+}
+async function lkCreate() {
+  sy.code = newCode(); sy.hash = await codeHash(sy.code); sy.h = {}; sy.t = {}; syShow = true; saveSy(); renderLink(); await syncNow(true);
+}
+async function lkJoin() {
+  const c = normCode($('lk-in').value);
+  if (c.length !== 25) { note('Deze code klopt niet: een code heeft 25 tekens (letters en cijfers).', 5000); return; }
+  const hash = await codeHash(c);
+  try {
+    const rows = await sb('sync_docs?select=name', { hash });
+    if (!rows.length) { note('Onder deze code staan geen gegevens. Controleer of je hem goed hebt overgenomen.', 7000); return; }
+    if (rows.some((r) => r.name === '_moved')) { note('Deze code is vervangen. Gebruik de nieuwste code van je andere toestel.', 7000); return; }
+  } catch { note('Kan nu niet controleren. Heb je internet?', 5000); return; }
+  sy.code = c; sy.hash = hash; sy.h = {}; sy.t = {}; syShow = false; saveSy(); renderLink(); await syncNow(true);
+}
+async function lkRotate() {
+  if (!confirm('Een nieuwe code maken? De oude code werkt daarna niet meer. Je moet de nieuwe code op je andere toestellen invullen.')) return;
+  const old = { ...sy }; sy.code = newCode(); sy.hash = await codeHash(sy.code); sy.h = {}; sy.t = {};
+  await syncNow(true);
+  if (sy.t.wantlist === undefined) { sy = old; saveSy(); renderLink(); note('Nieuwe code maken is niet gelukt. De oude code werkt nog.', 6000); return; }
+  try {
+    await sb('sync_docs?code_hash=eq.' + old.hash, { method: 'DELETE', hash: old.hash });
+    await sb('sync_history?code_hash=eq.' + old.hash, { method: 'DELETE', hash: old.hash });
+    await sb('sync_docs', { method: 'POST', hash: old.hash, body: JSON.stringify({ code_hash: old.hash, name: '_moved', data: { moved: true } }) });
+  } catch {}
+  syShow = true; saveSy(); renderLink(); note('Nieuwe code gemaakt. Vul hem in op je andere toestellen.', 8000);
+}
+$('btn-link').addEventListener('click', () => { renderLink(); setSyState(syState); $('dlg-link').showModal(); });
+$('lk-close').addEventListener('click', () => $('dlg-link').close());
+$('lk-body').addEventListener('click', async (e) => {
+  const id = e.target.id;
+  if (id === 'lk-new') lkCreate();
+  else if (id === 'lk-join') lkJoin();
+  else if (id === 'lk-toggle') { syShow = !syShow; renderLink(); }
+  else if (id === 'lk-copy') { try { await navigator.clipboard.writeText(fmtCode(sy.code)); note('Code gekopieerd.', 2000); } catch { syShow = true; renderLink(); note('Kopiëren lukte niet, de code staat nu in beeld.', 4000); } }
+  else if (id === 'lk-now') syncNow(true);
+  else if (id === 'lk-rot') lkRotate();
+  else if (id === 'lk-off') { if (confirm('Dit toestel ontkoppelen? Je lijsten blijven hier staan.')) { sy = { code: '', hash: '', h: {}, t: {} }; saveSy(); setSyState('uit'); renderLink(); } }
+  else if (e.target.dataset && e.target.dataset.hid) {
+    const rows = $('lk-hist')._rows || [], r = rows.find((x) => String(x.id) === e.target.dataset.hid);
+    if (r && confirm('Deze versie terugzetten? Wat je nu hebt, blijft nog even bewaard bij de eerdere versies.')) { syApply('wantlist', r.data); persist(); syRender(); note('Versie teruggezet.', 3000); }
+  }
+});
+$('lk-body').addEventListener('toggle', (e) => { if (e.target.tagName === 'DETAILS' && e.target.open && e.target.querySelector('#lk-hist')) lkHistory(); }, true);
+window.addEventListener('online', () => syncNow(false));
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') syncNow(false); });
+setInterval(() => { if (document.visibilityState === 'visible') syncNow(false); }, 5 * 60e3);
+async function syInit() { await loadSy(); setSyState(sy.code ? (navigator.onLine ? 'bezig' : 'offline') : 'uit'); if (sy.code) syncNow(false); }
+
 /* ---------- start ---------- */
 (async function init() {
   let restored = false;
@@ -1625,6 +1816,7 @@ $('btn-offline').addEventListener('click', () => cacheImages(false));
   renderWantlist(); renderResults([]);
   try { const saved = await DB.get('cards'); if (saved) { indexCards(saved); const sdk = await DB.get('decks'); if (sdk) indexDecks(sdk); const srk = await DB.get('recs'); if (srk) indexRecs(srk); setStatus(); runSearch(); renderWantlist(); } } catch {}
   renderDecks(); if (navigator.onLine) refreshDecks();
+  syInit();
   if (restored) note('Je lijsten waren door de browser gewist en zijn hersteld uit de reservekopie.', 10000);
   // één keer per dag automatisch bijwerken bij openen
   const age = meta.synced ? Date.now() - new Date(meta.synced).getTime() : Infinity;
